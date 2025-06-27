@@ -18,7 +18,6 @@
         #page-container canvas { 
             box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
             margin-bottom: 1rem; 
-            /* Ensure canvas is responsive within its container */
             max-width: 100%;
             height: auto;
         }
@@ -26,9 +25,13 @@
         .thumbnail-item { border: 2px solid transparent; transition: border-color 0.2s; }
         .thumbnail-item.selected { border-color: #3b82f6; }
         .sortable-ghost { opacity: 0.4; background: #c7d2fe; }
-        .redaction-box { position: absolute; border: 2px dashed red; background-color: rgba(255, 0, 0, 0.3); z-index: 10; }
+        .redaction-box { 
+            position: absolute; 
+            background-color: rgba(255, 255, 255, 0.8); 
+            border: 2px dashed #333;
+            z-index: 10; 
+        }
         
-        /* Mobile-First Sidebar Styles */
         #sidebar { 
             transform: translateX(-100%);
             transition: transform 0.3s ease-in-out;
@@ -37,7 +40,6 @@
             transform: translateX(0);
         }
 
-        /* On medium screens and up, the sidebar becomes static */
         @media (min-width: 768px) {
             #sidebar {
                 transform: translateX(0);
@@ -79,75 +81,68 @@
         <!-- Drawer/Sidebar -->
         <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white p-4 overflow-y-auto border-r border-gray-200 z-40">
             <h2 class="text-lg font-semibold mb-4">Actions</h2>
-            
-            <!-- Main Actions -->
             <div class="space-y-2 mb-6">
                 <button id="save-pdf-btn" class="w-full text-left bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Save As...</button>
                 <button id="print-pdf-btn" class="w-full text-left bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Print</button>
                 <button id="close-pdf-btn" class="w-full text-left bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Close</button>
             </div>
-            
             <hr class="my-4">
-
             <h2 class="text-lg font-semibold mb-4">Tools</h2>
-            <!-- Tools -->
             <div class="space-y-2 mb-6">
                 <button id="tool-merge" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Merge Documents</button>
                 <button id="tool-split" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Split Document</button>
                 <button id="tool-add-text" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Add Text</button>
                 <button id="tool-redact" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Redact</button>
             </div>
-
             <hr class="my-4">
-
-            <!-- Pages -->
             <h3 class="text-md font-semibold mb-2">Pages (Drag to Sort)</h3>
-            <div id="thumbnails-container" class="space-y-2">
-                <!-- Thumbnails will be injected here -->
-            </div>
+            <div id="thumbnails-container" class="space-y-2"></div>
         </aside>
 
         <!-- Main Content -->
         <main id="main-content" class="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
-            <!-- PDF Viewer -->
             <div id="viewer-container" class="flex-1 bg-gray-200 p-2 md:p-4 overflow-y-auto">
                 <div id="welcome-message" class="h-full flex flex-col items-center justify-center text-center p-4">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     <h3 class="mt-2 text-sm font-medium text-gray-900">No PDF selected</h3>
                     <p class="mt-1 text-sm text-gray-500">Get started by opening a PDF file.</p>
                 </div>
-                <div id="page-container" class="relative w-fit mx-auto">
-                    <!-- PDF pages will be rendered here -->
-                </div>
+                <div id="page-container" class="relative w-fit mx-auto"></div>
             </div>
         </main>
     </div>
 
-    <!-- Modal/Loader -->
+    <!-- Loader -->
     <div id="loader-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32"></div>
         <p id="loader-text" class="text-white text-lg ml-4">Loading...</p>
     </div>
+
+    <!-- Secure Redaction Confirmation Modal -->
+    <div id="secure-redact-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 class="text-lg font-bold mb-4">Confirm Secure Redaction</h3>
+            <p class="text-sm mb-4">This will create a new PDF where the redacted areas are permanently and securely removed.</p>
+            <p class="text-sm text-red-600 font-semibold mb-6">Warning: Text on the redacted pages will be converted to an image and will no longer be selectable or searchable. This action cannot be undone.</p>
+            <div class="flex justify-end space-x-4">
+                <button id="cancel-redact-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="confirm-redact-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Proceed</button>
+            </div>
+        </div>
+    </div>
     
-    <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(registration => console.log('ServiceWorker registration successful with scope: ', registration.scope))
-                    .catch(error => console.log('ServiceWorker registration failed: ', error));
+                navigator.serviceWorker.register('/service-worker.js').catch(err => console.log('SW reg failed: ', err));
             });
         }
     </script>
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // PDF.js worker configuration
             pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
             
-            // DOM Elements
             const fileInput = document.getElementById('file-input');
             const openPdfBtn = document.getElementById('open-pdf-btn');
             const savePdfBtn = document.getElementById('save-pdf-btn');
@@ -162,129 +157,75 @@
             const welcomeMessage = document.getElementById('welcome-message');
             const loaderOverlay = document.getElementById('loader-overlay');
             const loaderText = document.getElementById('loader-text');
-            
-            // Tool Buttons
             const toolMergeBtn = document.getElementById('tool-merge');
             const toolSplitBtn = document.getElementById('tool-split');
             const toolAddTextBtn = document.getElementById('tool-add-text');
             const toolRedactBtn = document.getElementById('tool-redact');
+            const secureRedactModal = document.getElementById('secure-redact-modal');
+            const cancelRedactBtn = document.getElementById('cancel-redact-btn');
+            const confirmRedactBtn = document.getElementById('confirm-redact-btn');
 
-            const actionButtons = [
-                savePdfBtn, printPdfBtn, closePdfBtn,
-                toolMergeBtn, toolSplitBtn, toolAddTextBtn, toolRedactBtn
-            ];
+            const actionButtons = [savePdfBtn, printPdfBtn, closePdfBtn, toolMergeBtn, toolSplitBtn, toolAddTextBtn, toolRedactBtn];
 
-            // App State
-            let pdfDoc = null;
-            let pdfBytes = null;
-            let pageOrder = [];
-            let activeTool = null;
-            let redactionAreas = [];
+            let pdfDoc = null, pdfBytes = null, pageOrder = [], activeTool = null, redactionAreas = [];
 
-            // --- UI STATE MANAGEMENT ---
-            const updateActionButtonsState = (enabled) => {
-                actionButtons.forEach(button => {
-                    button.disabled = !enabled;
-                });
-            };
-            
-            // Set initial state on load
+            const updateActionButtonsState = enabled => actionButtons.forEach(b => b.disabled = !enabled);
             updateActionButtonsState(false);
 
+            const openDrawer = () => { sidebar.classList.add('open'); drawerOverlay.classList.remove('hidden'); };
+            const closeDrawer = () => { sidebar.classList.remove('open'); drawerOverlay.classList.add('hidden'); };
 
-            // --- DRAWER/MENU LOGIC for Mobile ---
-            const openDrawer = () => {
-                sidebar.classList.add('open');
-                drawerOverlay.classList.remove('hidden');
-            };
-
-            const closeDrawer = () => {
-                sidebar.classList.remove('open');
-                drawerOverlay.classList.add('hidden');
-            };
-
-            menuBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // This check is redundant now because the button is hidden, but it's good practice
-                if (pdfDoc) { 
-                    sidebar.classList.contains('open') ? closeDrawer() : openDrawer();
-                }
-            });
-
+            menuBtn.addEventListener('click', e => { e.stopPropagation(); if (pdfDoc) sidebar.classList.contains('open') ? closeDrawer() : openDrawer(); });
             drawerOverlay.addEventListener('click', closeDrawer);
 
-            // --- CORE PDF HANDLING ---
-
             const closePdf = () => {
-                pdfDoc = null;
-                pdfBytes = null;
-                pageOrder = [];
-                redactionAreas = [];
-                activeTool = null;
-
-                pageContainer.innerHTML = '';
-                thumbnailsContainer.innerHTML = '';
+                pdfDoc = null; pdfBytes = null; pageOrder = []; redactionAreas = []; activeTool = null;
+                pageContainer.innerHTML = ''; thumbnailsContainer.innerHTML = '';
                 document.querySelectorAll('.redaction-box').forEach(box => box.remove());
-                
                 welcomeMessage.classList.remove('hidden');
                 fileInput.value = '';
-                updateActionButtonsState(false); // Disable buttons on close
-                
-                // Restore original UI state
+                updateActionButtonsState(false);
                 openPdfBtn.classList.remove('hidden');
                 menuBtn.classList.add('hidden');
-
                 closeDrawer();
             };
 
-            const loadPdf = async (file) => {
+            const loadPdf = async file => {
                 showLoader('Loading PDF...');
-                const arrayBuffer = await file.arrayBuffer();
-                pdfBytes = new Uint8Array(arrayBuffer);
-                
+                pdfBytes = new Uint8Array(await file.arrayBuffer());
                 await loadPdfFromBytes(pdfBytes);
                 welcomeMessage.classList.add('hidden');
-                
-                // Update UI state for opened PDF
                 openPdfBtn.classList.add('hidden');
                 menuBtn.classList.remove('hidden');
-
                 hideLoader();
             };
             
-            const loadPdfFromBytes = async (bytes) => {
+            const loadPdfFromBytes = async bytes => {
                  showLoader('Rendering PDF...');
                  pdfBytes = bytes;
                  pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
                  pageOrder = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
                  await renderAllPages();
                  await renderThumbnails();
-                 updateActionButtonsState(true); // Enable buttons on load
+                 updateActionButtonsState(true);
                  hideLoader();
             }
 
             const renderPage = async (pageNum, container) => {
                 const page = await pdfDoc.getPage(pageNum);
-                // Adjust scale for better mobile viewing
                 const scale = (viewerContainer.clientWidth / page.getViewport({ scale: 1.0 }).width) * 0.95;
                 const viewport = page.getViewport({ scale });
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
+                canvas.height = viewport.height; canvas.width = viewport.width;
                 canvas.dataset.pageNum = pageNum;
-                
-                const renderContext = { canvasContext: context, viewport };
-                await page.render(renderContext).promise;
+                await page.render({ canvasContext: context, viewport }).promise;
                 container.appendChild(canvas);
-                return canvas;
             };
 
             const renderAllPages = async () => {
                 pageContainer.innerHTML = '';
-                for (const pageNum of pageOrder) {
-                    await renderPage(pageNum, pageContainer);
-                }
+                for (const pageNum of pageOrder) await renderPage(pageNum, pageContainer);
                 viewerContainer.scrollTop = 0;
             };
             
@@ -295,302 +236,167 @@
                     const page = await pdfDoc.getPage(pageNum);
                     const viewport = page.getViewport({ scale: 0.3 });
                     const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-
-                    const renderContext = { canvasContext: context, viewport };
-                    await page.render(renderContext).promise;
-                    
+                    canvas.height = viewport.height; canvas.width = viewport.width;
+                    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
                     const thumbItem = document.createElement('div');
-                    thumbItem.classList.add('thumbnail-item', 'p-1', 'rounded-md', 'cursor-pointer', 'relative');
+                    thumbItem.className = 'thumbnail-item p-1 rounded-md cursor-pointer relative';
                     thumbItem.dataset.originalIndex = pageNum;
-                    thumbItem.dataset.currentIndex = i;
-                    
                     const pageNumberLabel = document.createElement('span');
                     pageNumberLabel.textContent = i + 1;
-                    pageNumberLabel.classList.add('absolute', 'top-1', 'left-1', 'bg-blue-500', 'text-white', 'text-xs', 'font-bold', 'px-1.5', 'py-0.5', 'rounded');
-                    
-                    thumbItem.appendChild(canvas);
-                    thumbItem.appendChild(pageNumberLabel);
+                    pageNumberLabel.className = 'absolute top-1 left-1 bg-blue-500 text-white text-xs font-bold px-1.5 py-0.5 rounded';
+                    thumbItem.append(canvas, pageNumberLabel);
                     thumbnailsContainer.appendChild(thumbItem);
                 }
             };
 
-            // --- EVENT LISTENERS ---
-
             openPdfBtn.addEventListener('click', () => fileInput.click());
             closePdfBtn.addEventListener('click', closePdf);
-            
-            fileInput.addEventListener('change', async (e) => {
-                if (e.target.files.length > 0) {
-                    if(activeTool === 'merge') {
-                        await handleMerge(e.target.files);
-                        activeTool = null;
-                    } else {
-                        await loadPdf(e.target.files[0]);
-                    }
+            fileInput.addEventListener('change', e => { if (e.target.files.length > 0) loadPdf(e.target.files[0]); });
+
+            // --- SAVE LOGIC ---
+            savePdfBtn.addEventListener('click', () => {
+                if (!pdfDoc) return;
+                if (redactionAreas.length > 0) {
+                    secureRedactModal.classList.remove('hidden');
+                } else {
+                    // If no redactions, perform a normal save
+                    performStandardSave();
                 }
             });
 
-            savePdfBtn.addEventListener('click', async () => {
-                if (!pdfDoc) return;
-                closeDrawer();
-                
+            cancelRedactBtn.addEventListener('click', () => secureRedactModal.classList.add('hidden'));
+            confirmRedactBtn.addEventListener('click', () => {
+                secureRedactModal.classList.add('hidden');
+                performSecureRedaction();
+            });
+
+            const performStandardSave = async () => {
+                // This is the original, non-secure save for non-redacted files.
                 const originalFileName = fileInput.files[0]?.name || 'document.pdf';
                 let newFileName = prompt('Enter file name:', `edited-${originalFileName}`);
-
                 if (newFileName === null) return;
                 if (newFileName.trim() === '') newFileName = `edited-${originalFileName}`;
                 if (!newFileName.toLowerCase().endsWith('.pdf')) newFileName += '.pdf';
 
                 showLoader('Saving PDF...');
-                try {
-                    const { PDFDocument, rgb } = PDFLib;
-                    const originalDoc = await PDFDocument.load(pdfBytes);
-                    const finalDoc = await PDFDocument.create();
-                    const pageIndicesToCopy = pageOrder.map(p => p - 1);
-                    const copiedPages = await finalDoc.copyPages(originalDoc, pageIndicesToCopy);
-                    copiedPages.forEach(page => finalDoc.addPage(page));
+                const { PDFDocument } = PDFLib;
+                const finalDoc = await PDFDocument.create();
+                const originalDoc = await PDFDocument.load(pdfBytes);
+                const copiedPages = await finalDoc.copyPages(originalDoc, pageOrder.map(p => p - 1));
+                copiedPages.forEach(p => finalDoc.addPage(p));
+                const finalPdfBytes = await finalDoc.save();
+                downloadBlob(finalPdfBytes, newFileName);
+                hideLoader();
+            };
 
-                    if (redactionAreas.length > 0) {
-                        for (const area of redactionAreas) {
-                            const originalPageIndex = pageOrder.indexOf(area.originalPageNum);
-                            if (originalPageIndex !== -1) {
-                                const page = finalDoc.getPage(originalPageIndex);
-                                page.drawRectangle({ ...area, color: rgb(0, 0, 0) });
+            const performSecureRedaction = async () => {
+                const originalFileName = fileInput.files[0]?.name || 'document.pdf';
+                let newFileName = prompt('Enter file name for the securely redacted PDF:', `redacted-${originalFileName}`);
+                if (newFileName === null) return;
+                if (newFileName.trim() === '') newFileName = `redacted-${originalFileName}`;
+                if (!newFileName.toLowerCase().endsWith('.pdf')) newFileName += '.pdf';
+
+                showLoader('Applying secure redaction...');
+                try {
+                    const { PDFDocument } = PDFLib;
+                    const finalDoc = await PDFDocument.create();
+                    const RENDER_SCALE = 2.0; // Higher scale for better quality
+
+                    for (const pageNum of pageOrder) {
+                        const page = await pdfDoc.getPage(pageNum);
+                        const viewport = page.getViewport({ scale: RENDER_SCALE });
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height; canvas.width = viewport.width;
+                        
+                        await page.render({ canvasContext: context, viewport }).promise;
+
+                        const pageRedactions = redactionAreas.filter(r => r.originalPageNum === pageNum);
+                        if (pageRedactions.length > 0) {
+                            context.fillStyle = 'white';
+                            for (const area of pageRedactions) {
+                                // Convert PDF coordinates to canvas coordinates for drawing
+                                const rectX = area.x * RENDER_SCALE;
+                                const rectWidth = area.width * RENDER_SCALE;
+                                const rectHeight = area.height * RENDER_SCALE;
+                                const rectY = viewport.height - (area.y * RENDER_SCALE) - rectHeight;
+                                context.fillRect(rectX, rectY, rectWidth, rectHeight);
                             }
                         }
-                    }
 
+                        const pngImageBytes = await new Promise(resolve => canvas.toBlob(blob => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(new Uint8Array(reader.result));
+                            reader.readAsArrayBuffer(blob);
+                        }, 'image/png'));
+                        
+                        const pngImage = await finalDoc.embedPng(pngImageBytes);
+                        const { width, height } = page.getViewport({ scale: 1.0 });
+                        const newPage = finalDoc.addPage([width, height]);
+                        newPage.drawImage(pngImage, { x: 0, y: 0, width: newPage.getWidth(), height: newPage.getHeight() });
+                    }
                     const finalPdfBytes = await finalDoc.save();
                     downloadBlob(finalPdfBytes, newFileName);
                 } catch (error) {
-                    console.error("Error saving PDF:", error);
-                    alert("An error occurred while saving the PDF.");
+                    console.error("Error during secure redaction:", error);
+                    alert("An error occurred while applying secure redaction.");
                 } finally {
                     hideLoader();
                 }
-            });
-
-            printPdfBtn.addEventListener('click', async () => {
-                if (!pdfDoc) return;
-                closeDrawer();
-                showLoader('Preparing for print...');
-                const { PDFDocument } = PDFLib;
-                const finalDoc = await PDFDocument.create();
-                const pageIndicesToCopy = pageOrder.map(p => p - 1);
-                const originalDoc = await PDFDocument.load(pdfBytes);
-                const copiedPages = await finalDoc.copyPages(originalDoc, pageIndicesToCopy);
-                copiedPages.forEach(page => finalDoc.addPage(page));
-                const finalPdfBytes = await finalDoc.save();
-                hideLoader();
-
-                const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.src = url;
-                document.body.appendChild(iframe);
-                iframe.onload = () => {
-                    setTimeout(() => {
-                        iframe.focus();
-                        iframe.contentWindow.print();
-                    }, 1);
-                };
-            });
-
-            // --- TOOLS ---
-            
-            new Sortable(thumbnailsContainer, {
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                delay: 300, 
-                delayOnTouchOnly: true,
-                onEnd: async (evt) => {
-                    const element = pageOrder.splice(evt.oldIndex, 1)[0];
-                    pageOrder.splice(evt.newIndex, 0, element);
-                    showLoader('Reordering pages...');
-                    await renderAllPages();
-                    await renderThumbnails();
-                    hideLoader();
-                }
-            });
-
-            const activateTool = (toolName, message) => {
-                 if (!pdfDoc) {
-                    // This check is now mostly redundant due to buttons being disabled, but good for safety.
-                    alert('Please open a PDF first.');
-                    return false;
-                }
-                activeTool = toolName;
-                alert(message);
-                closeDrawer();
-                return true;
-            }
-
-            toolMergeBtn.addEventListener('click', () => {
-                if (activateTool('merge', 'Select additional PDF files to merge.')) {
-                    fileInput.click();
-                }
-            });
-            
-            const handleMerge = async (filesToMerge) => {
-                showLoader('Merging PDFs...');
-                const { PDFDocument } = PDFLib;
-                const mergedPdf = await PDFDocument.load(pdfBytes);
-
-                for (const file of filesToMerge) {
-                    const bytes = await file.arrayBuffer();
-                    const docToMerge = await PDFDocument.load(bytes);
-                    const pages = await mergedPdf.copyPages(docToMerge, docToMerge.getPageIndices());
-                    pages.forEach(page => mergedPdf.addPage(page));
-                }
-
-                const finalBytes = await mergedPdf.save();
-                await loadPdfFromBytes(finalBytes);
-                hideLoader();
             };
 
-            toolSplitBtn.addEventListener('click', async () => {
-                if (!pdfDoc) return;
-                closeDrawer();
-                const splitIndexStr = prompt(`Enter page number to split AFTER (1-${pageOrder.length}):`);
-                const splitIndex = parseInt(splitIndexStr);
-                
-                if (isNaN(splitIndex) || splitIndex <= 0 || splitIndex >= pageOrder.length) {
-                    alert('Invalid split point.');
-                    return;
-                }
+            // --- TOOLS & INTERACTION LOGIC ---
+            let interactionStartX, interactionStartY, redactionBox = null;
 
-                showLoader('Splitting PDF...');
-                const { PDFDocument } = PDFLib;
-                const baseDoc = await PDFDocument.load(pdfBytes);
-
-                const firstDoc = await PDFDocument.create();
-                const firstPagesIndices = pageOrder.slice(0, splitIndex).map(p => p - 1);
-                const firstPages = await firstDoc.copyPages(baseDoc, firstPagesIndices);
-                firstPages.forEach(p => firstDoc.addPage(p));
-                const firstBytes = await firstDoc.save();
-                downloadBlob(firstBytes, `part1-${fileInput.files[0].name}`);
-
-                const secondDoc = await PDFDocument.create();
-                const secondPagesIndices = pageOrder.slice(splitIndex).map(p => p - 1);
-                const secondPages = await secondDoc.copyPages(baseDoc, secondPagesIndices);
-                secondPages.forEach(p => secondDoc.addPage(p));
-                const secondBytes = await secondDoc.save();
-                downloadBlob(secondBytes, `part2-${fileInput.files[0].name}`);
-                
-                hideLoader();
-            });
-
-            toolAddTextBtn.addEventListener('click', () => {
-                if (activateTool('add-text', 'Tap on a page to add text.')) {
-                    pageContainer.style.cursor = 'crosshair';
-                }
-            });
-
-            toolRedactBtn.addEventListener('click', () => {
-                 if (activateTool('redact', 'Tap and drag on a page to create a redaction area.')) {
-                    pageContainer.style.cursor = 'crosshair';
-                    document.querySelectorAll('.redaction-box').forEach(box => box.remove());
-                }
-            });
-
-            // --- UNIFIED MOUSE AND TOUCH HANDLING FOR TOOLS ---
-            let interactionStartX, interactionStartY;
-            let redactionBox = null;
-
-            const handleInteractionStart = async (e) => {
+            const handleInteractionStart = e => {
                 if (!activeTool || !e.target.matches('canvas')) return;
-                e.preventDefault(); // Prevent scrolling on touch
-
+                e.preventDefault();
                 const touch = e.changedTouches ? e.changedTouches[0] : e;
-                interactionStartX = touch.clientX;
-                interactionStartY = touch.clientY;
-
+                interactionStartX = touch.clientX; interactionStartY = touch.clientY;
                 if (activeTool === 'redact') {
                     redactionBox = document.createElement('div');
-                    redactionBox.classList.add('redaction-box');
+                    redactionBox.className = 'redaction-box';
                     pageContainer.appendChild(redactionBox);
-                    updateRedactionBox(e); // Initial placement
+                    updateRedactionBox(e);
                 }
             };
 
-            const handleInteractionMove = (e) => {
+            const handleInteractionMove = e => {
                 if (!activeTool || !e.target.matches('canvas') || !redactionBox) return;
                 e.preventDefault();
                 updateRedactionBox(e);
             };
 
-            const handleInteractionEnd = async (e) => {
+            const handleInteractionEnd = async e => {
                 if (!activeTool || !e.target.matches('canvas')) return;
                 e.preventDefault();
-
                 const canvas = e.target;
                 const rect = canvas.getBoundingClientRect();
                 const originalPageNum = parseInt(canvas.dataset.pageNum);
                 const page = await pdfDoc.getPage(originalPageNum);
-                
-                // Use the same scale calculation as when rendering the page
                 const scale = (viewerContainer.clientWidth / page.getViewport({ scale: 1.0 }).width) * 0.95;
                 const viewport = page.getViewport({ scale });
-
-                const touch = e.changedTouches ? e.changedTouches[0] : e;
                 
-                if (activeTool === 'add-text') {
-                    const x = touch.clientX - rect.left;
-                    const y = touch.clientY - rect.top;
-                    
-                    const [pdfX, pdfY] = viewport.convertToPdfPoint(x, y);
-                    
-                    const text = prompt('Enter text to add:');
-                    if (text) {
-                        showLoader('Adding text...');
-                        const { PDFDocument, rgb, StandardFonts } = PDFLib;
-                        const pdfLibDoc = await PDFDocument.load(pdfBytes);
-                        const helveticaFont = await pdfLibDoc.embedFont(StandardFonts.Helvetica);
-                        const pageIndex = pageOrder.indexOf(originalPageNum);
-                        const targetPage = pdfLibDoc.getPage(pageIndex);
-                        targetPage.drawText(text, { x: pdfX, y: pdfY, font: helveticaFont, size: 12, color: rgb(0, 0, 0) });
-                        const finalBytes = await pdfLibDoc.save();
-                        await loadPdfFromBytes(finalBytes);
-                        hideLoader();
-                    }
-                    resetTool();
-
-                } else if (activeTool === 'redact' && redactionBox) {
+                if (activeTool === 'redact' && redactionBox) {
                     const boxRect = redactionBox.getBoundingClientRect();
-
                     const [left, top] = viewport.convertToPdfPoint(boxRect.left - rect.left, boxRect.top - rect.top);
                     const [right, bottom] = viewport.convertToPdfPoint(boxRect.right - rect.left, boxRect.bottom - rect.top);
-
-                    const pdfStartX = left;
-                    const pdfStartY = bottom; 
-                    const pdfWidth = right - left;
-                    const pdfHeight = top - bottom;
-
-                    if (pdfWidth > 0 && pdfHeight > 0) {
-                        redactionAreas.push({ originalPageNum, x: pdfStartX, y: pdfStartY, width: pdfWidth, height: pdfHeight });
-                        alert(`Redaction area added. Click 'Save' to apply changes permanently.`);
+                    if ((right - left) > 0 && (top - bottom) > 0) {
+                        redactionAreas.push({ originalPageNum, x: left, y: bottom, width: right - left, height: top - bottom });
                     }
-                    resetTool();
-                    redactionBox = null;
+                    redactionBox = null; // Don't remove the visual box, just the reference
                 }
+                resetTool();
             };
             
-            const updateRedactionBox = (e) => {
+            const updateRedactionBox = e => {
                 if (!redactionBox) return;
                 const touch = e.changedTouches ? e.changedTouches[0] : e;
-                const currentX = touch.clientX;
-                const currentY = touch.clientY;
                 const rect = e.target.getBoundingClientRect();
-
-                const left = Math.min(interactionStartX, currentX) - rect.left;
-                const top = Math.min(interactionStartY, currentY) - rect.top;
-                const width = Math.abs(currentX - interactionStartX);
-                const height = Math.abs(currentY - interactionStartY);
-
+                const left = Math.min(interactionStartX, touch.clientX) - rect.left;
+                const top = Math.min(interactionStartY, touch.clientY) - rect.top;
+                const width = Math.abs(touch.clientX - interactionStartX);
+                const height = Math.abs(touch.clientY - interactionStartY);
                 redactionBox.style.left = `${left}px`;
                 redactionBox.style.top = `${top}px`;
                 redactionBox.style.width = `${width}px`;
@@ -604,29 +410,18 @@
             pageContainer.addEventListener('touchmove', handleInteractionMove, { passive: false });
             pageContainer.addEventListener('touchend', handleInteractionEnd);
             
-            const resetTool = () => {
-                activeTool = null;
-                pageContainer.style.cursor = 'default';
-            };
+            const resetTool = () => { activeTool = null; pageContainer.style.cursor = 'default'; };
+            const activateTool = (toolName, message) => { activeTool = toolName; alert(message); closeDrawer(); return true; };
+            toolRedactBtn.addEventListener('click', () => { if (activateTool('redact', 'Tap and drag on a page to create a redaction area.')) { /* Intentionally left blank */ } });
 
             // --- UTILITY FUNCTIONS ---
-
-            const showLoader = (text) => {
-                loaderText.textContent = text;
-                loaderOverlay.classList.remove('hidden');
-            };
-
-            const hideLoader = () => {
-                loaderOverlay.classList.add('hidden');
-            };
-
+            const showLoader = text => { loaderText.textContent = text; loaderOverlay.classList.remove('hidden'); };
+            const hideLoader = () => loaderOverlay.classList.add('hidden');
             const downloadBlob = (data, fileName) => {
                 const blob = new Blob([data], { type: 'application/pdf' });
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = fileName;
+                a.style.display = 'none'; a.href = url; a.download = fileName;
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
