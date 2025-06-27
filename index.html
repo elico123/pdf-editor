@@ -51,7 +51,7 @@
         
         <!-- Main Actions -->
         <div class="space-y-2 mb-6">
-            <button id="save-pdf-btn" class="w-full text-left bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition">Save</button>
+            <button id="save-pdf-btn" class="w-full text-left bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition">Save As...</button>
             <button id="print-pdf-btn" class="w-full text-left bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition">Print</button>
             <button id="close-pdf-btn" class="w-full text-left bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition">Close</button>
         </div>
@@ -285,35 +285,64 @@
             });
 
             savePdfBtn.addEventListener('click', async () => {
+                if (!pdfDoc) {
+                    alert('Please open a PDF file first.');
+                    return;
+                }
                 closeDrawer();
-                showLoader('Saving PDF...');
-                const { PDFDocument } = PDFLib;
-                const originalDoc = await PDFDocument.load(pdfBytes);
-                const finalDoc = await PDFDocument.create();
-                const pageIndicesToCopy = pageOrder.map(p => p - 1);
-                const copiedPages = await finalDoc.copyPages(originalDoc, pageIndicesToCopy);
-                copiedPages.forEach(page => finalDoc.addPage(page));
+                
+                const originalFileName = fileInput.files[0]?.name || 'document.pdf';
+                let newFileName = prompt('Enter file name:', `edited-${originalFileName}`);
 
-                if (redactionAreas.length > 0) {
-                    const { rgb } = PDFLib;
-                    for (const area of redactionAreas) {
-                        const originalPageIndex = pageOrder.indexOf(area.originalPageNum);
-                        if (originalPageIndex !== -1) {
-                            const page = finalDoc.getPage(originalPageIndex);
-                            page.drawRectangle({
-                                x: area.x,
-                                y: area.y,
-                                width: area.width,
-                                height: area.height,
-                                color: rgb(0, 0, 0),
-                            });
-                        }
-                    }
+                // If the user clicks "Cancel", the prompt returns null.
+                if (newFileName === null) {
+                    return; // Abort saving
                 }
 
-                const finalPdfBytes = await finalDoc.save();
-                downloadBlob(finalPdfBytes, `edited-${fileInput.files[0]?.name || 'document.pdf'}`);
-                hideLoader();
+                // If the user enters an empty string, use a default name.
+                if (newFileName.trim() === '') {
+                    newFileName = `edited-${originalFileName}`;
+                }
+
+                // Ensure the file name ends with .pdf
+                if (!newFileName.toLowerCase().endsWith('.pdf')) {
+                    newFileName += '.pdf';
+                }
+
+                showLoader('Saving PDF...');
+                try {
+                    const { PDFDocument } = PDFLib;
+                    const originalDoc = await PDFDocument.load(pdfBytes);
+                    const finalDoc = await PDFDocument.create();
+                    const pageIndicesToCopy = pageOrder.map(p => p - 1);
+                    const copiedPages = await finalDoc.copyPages(originalDoc, pageIndicesToCopy);
+                    copiedPages.forEach(page => finalDoc.addPage(page));
+
+                    if (redactionAreas.length > 0) {
+                        const { rgb } = PDFLib;
+                        for (const area of redactionAreas) {
+                            const originalPageIndex = pageOrder.indexOf(area.originalPageNum);
+                            if (originalPageIndex !== -1) {
+                                const page = finalDoc.getPage(originalPageIndex);
+                                page.drawRectangle({
+                                    x: area.x,
+                                    y: area.y,
+                                    width: area.width,
+                                    height: area.height,
+                                    color: rgb(0, 0, 0),
+                                });
+                            }
+                        }
+                    }
+
+                    const finalPdfBytes = await finalDoc.save();
+                    downloadBlob(finalPdfBytes, newFileName);
+                } catch (error) {
+                    console.error("Error saving PDF:", error);
+                    alert("An error occurred while saving the PDF.");
+                } finally {
+                    hideLoader();
+                }
             });
 
             printPdfBtn.addEventListener('click', async () => {
