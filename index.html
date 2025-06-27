@@ -310,9 +310,18 @@
 
             // --- TOOLS ---
             
+            // Initialize SortableJS with delay and haptic feedback
             new Sortable(thumbnailsContainer, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
+                delay: 300, // Wait 300ms before starting a drag
+                delayOnTouchOnly: true, // Only delay on touch devices
+                onStart: function (evt) {
+                    // Vibrate on drag start for haptic feedback on supported devices
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                },
                 onEnd: async (evt) => {
                     const element = pageOrder.splice(evt.oldIndex, 1)[0];
                     pageOrder.splice(evt.newIndex, 0, element);
