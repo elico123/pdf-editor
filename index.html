@@ -25,12 +25,35 @@
         .thumbnail-item { border: 2px solid transparent; transition: border-color 0.2s; }
         .thumbnail-item.selected { border-color: #3b82f6; }
         .sortable-ghost { opacity: 0.4; background: #c7d2fe; }
+        
         .redaction-box { 
             position: absolute; 
             background-color: rgba(255, 255, 255, 0.8); 
             border: 2px dashed #333;
             z-index: 10; 
+            cursor: move;
         }
+        .redaction-box.selected {
+            border: 2px solid #3b82f6;
+            z-index: 11;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background-color: #3b82f6;
+            border: 2px solid white;
+            border-radius: 50%;
+            z-index: 12;
+            display: none; /* Hidden by default */
+        }
+        .redaction-box.resize-mode .resize-handle {
+            display: block; /* Shown in resize mode */
+        }
+        .resize-handle.nw { top: -12px; left: -12px; cursor: nwse-resize; }
+        .resize-handle.ne { top: -12px; right: -12px; cursor: nesw-resize; }
+        .resize-handle.sw { bottom: -12px; left: -12px; cursor: nesw-resize; }
+        .resize-handle.se { bottom: -12px; right: -12px; cursor: nwse-resize; }
         
         #sidebar { 
             transform: translateX(-100%);
@@ -38,6 +61,14 @@
         }
         #sidebar.open { 
             transform: translateX(0);
+        }
+
+        #redaction-toolbar {
+            transition: transform 0.3s ease-in-out;
+            transform: translateY(100%);
+        }
+        #redaction-toolbar.visible {
+            transform: translateY(0);
         }
 
         @media (min-width: 768px) {
@@ -58,59 +89,71 @@
 </head>
 <body class="bg-gray-100 text-gray-800 flex flex-col h-screen overflow-hidden">
 
-    <!-- Header -->
-    <header class="bg-white shadow-md p-4 flex items-center justify-between z-20 flex-shrink-0">
-        <div class="flex items-center space-x-4">
-            <button id="menu-btn" class="p-2 rounded-md hover:bg-gray-200 transition hidden">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
-            <h1 class="text-xl md:text-2xl font-bold text-gray-800">PDF Editor</h1>
-        </div>
-        <div id="header-actions" class="flex items-center space-x-2">
-            <input type="file" id="file-input" class="hidden" accept="application/pdf" multiple>
-            <button id="open-pdf-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Open PDF</button>
-        </div>
-    </header>
-
-    <div class="flex-1 flex overflow-hidden">
-        <!-- Drawer Overlay -->
-        <div id="drawer-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
-
-        <!-- Drawer/Sidebar -->
-        <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white p-4 overflow-y-auto border-r border-gray-200 z-40">
-            <h2 class="text-lg font-semibold mb-4">Actions</h2>
-            <div class="space-y-2 mb-6">
-                <button id="save-pdf-btn" class="w-full text-left bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Save As...</button>
-                <button id="print-pdf-btn" class="w-full text-left bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Print</button>
-                <button id="close-pdf-btn" class="w-full text-left bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Close</button>
+    <!-- Main container -->
+    <div class="flex-1 flex flex-col overflow-hidden relative">
+        <!-- Header -->
+        <header class="bg-white shadow-md p-4 flex items-center justify-between z-20 flex-shrink-0">
+            <div class="flex items-center space-x-4">
+                <button id="menu-btn" class="p-2 rounded-md hover:bg-gray-200 transition hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+                <h1 class="text-xl md:text-2xl font-bold text-gray-800">PDF Editor</h1>
             </div>
-            <hr class="my-4">
-            <h2 class="text-lg font-semibold mb-4">Tools</h2>
-            <div class="space-y-2 mb-6">
-                <button id="tool-merge" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Merge Documents</button>
-                <button id="tool-split" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Split Document</button>
-                <button id="tool-add-text" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Add Text</button>
-                <button id="tool-redact" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Redact</button>
+            <div id="header-actions" class="flex items-center space-x-2">
+                <input type="file" id="file-input" class="hidden" accept="application/pdf" multiple>
+                <button id="open-pdf-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Open PDF</button>
             </div>
-            <hr class="my-4">
-            <h3 class="text-md font-semibold mb-2">Pages (Drag to Sort)</h3>
-            <div id="thumbnails-container" class="space-y-2"></div>
-        </aside>
+        </header>
 
-        <!-- Main Content -->
-        <main id="main-content" class="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
-            <div id="viewer-container" class="flex-1 bg-gray-200 p-2 md:p-4 overflow-y-auto">
-                <div id="welcome-message" class="h-full flex flex-col items-center justify-center text-center p-4">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">No PDF selected</h3>
-                    <p class="mt-1 text-sm text-gray-500">Get started by opening a PDF file.</p>
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Drawer Overlay -->
+            <div id="drawer-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
+
+            <!-- Drawer/Sidebar -->
+            <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white p-4 overflow-y-auto border-r border-gray-200 z-40">
+                <h2 class="text-lg font-semibold mb-4">Actions</h2>
+                <div class="space-y-2 mb-6">
+                    <button id="save-pdf-btn" class="w-full text-left bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Save As...</button>
+                    <button id="print-pdf-btn" class="w-full text-left bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Print</button>
+                    <button id="close-pdf-btn" class="w-full text-left bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Close</button>
                 </div>
-                <div id="page-container" class="relative w-fit mx-auto"></div>
-            </div>
-        </main>
+                <hr class="my-4">
+                <h2 class="text-lg font-semibold mb-4">Tools</h2>
+                <div class="space-y-2 mb-6">
+                    <button id="tool-merge" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Merge Documents</button>
+                    <button id="tool-split" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Split Document</button>
+                    <button id="tool-add-text" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Add Text</button>
+                    <button id="tool-redact" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Redact</button>
+                </div>
+                <hr class="my-4">
+                <h3 class="text-md font-semibold mb-2">Pages (Drag to Sort)</h3>
+                <div id="thumbnails-container" class="space-y-2"></div>
+            </aside>
+
+            <!-- Main Content -->
+            <main id="main-content" class="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
+                <div id="viewer-container" class="flex-1 bg-gray-200 p-2 md:p-4 overflow-y-auto">
+                    <div id="welcome-message" class="h-full flex flex-col items-center justify-center text-center p-4">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">No PDF selected</h3>
+                        <p class="mt-1 text-sm text-gray-500">Get started by opening a PDF file.</p>
+                    </div>
+                    <div id="page-container" class="relative w-fit mx-auto"></div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Redaction Contextual Toolbar -->
+        <div id="redaction-toolbar" class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-2 flex justify-center items-center space-x-4 z-40">
+            <button id="toolbar-resize-btn" class="p-2 rounded-md hover:bg-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" /></svg>
+            </button>
+            <button id="toolbar-delete-btn" class="p-2 rounded-md hover:bg-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+        </div>
     </div>
+
 
     <!-- Loader -->
     <div id="loader-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
@@ -157,17 +200,18 @@
             const welcomeMessage = document.getElementById('welcome-message');
             const loaderOverlay = document.getElementById('loader-overlay');
             const loaderText = document.getElementById('loader-text');
-            const toolMergeBtn = document.getElementById('tool-merge');
-            const toolSplitBtn = document.getElementById('tool-split');
-            const toolAddTextBtn = document.getElementById('tool-add-text');
             const toolRedactBtn = document.getElementById('tool-redact');
             const secureRedactModal = document.getElementById('secure-redact-modal');
             const cancelRedactBtn = document.getElementById('cancel-redact-btn');
             const confirmRedactBtn = document.getElementById('confirm-redact-btn');
+            const redactionToolbar = document.getElementById('redaction-toolbar');
+            const toolbarResizeBtn = document.getElementById('toolbar-resize-btn');
+            const toolbarDeleteBtn = document.getElementById('toolbar-delete-btn');
 
-            const actionButtons = [savePdfBtn, printPdfBtn, closePdfBtn, toolMergeBtn, toolSplitBtn, toolAddTextBtn, toolRedactBtn];
+            const actionButtons = [savePdfBtn, printPdfBtn, closePdfBtn, document.getElementById('tool-merge'), document.getElementById('tool-split'), document.getElementById('tool-add-text'), toolRedactBtn];
 
             let pdfDoc = null, pdfBytes = null, pageOrder = [], activeTool = null, redactionAreas = [];
+            let selectedRedactionBox = null;
 
             const updateActionButtonsState = enabled => actionButtons.forEach(b => b.disabled = !enabled);
             updateActionButtonsState(false);
@@ -181,7 +225,6 @@
             const closePdf = () => {
                 pdfDoc = null; pdfBytes = null; pageOrder = []; redactionAreas = []; activeTool = null;
                 pageContainer.innerHTML = ''; thumbnailsContainer.innerHTML = '';
-                document.querySelectorAll('.redaction-box').forEach(box => box.remove());
                 welcomeMessage.classList.remove('hidden');
                 fileInput.value = '';
                 updateActionButtonsState(false);
@@ -226,6 +269,7 @@
             const renderAllPages = async () => {
                 pageContainer.innerHTML = '';
                 for (const pageNum of pageOrder) await renderPage(pageNum, pageContainer);
+                await renderRedactionBoxes();
                 viewerContainer.scrollTop = 0;
             };
             
@@ -253,13 +297,11 @@
             closePdfBtn.addEventListener('click', closePdf);
             fileInput.addEventListener('change', e => { if (e.target.files.length > 0) loadPdf(e.target.files[0]); });
 
-            // --- SAVE LOGIC ---
             savePdfBtn.addEventListener('click', () => {
                 if (!pdfDoc) return;
                 if (redactionAreas.length > 0) {
                     secureRedactModal.classList.remove('hidden');
                 } else {
-                    // If no redactions, perform a normal save
                     performStandardSave();
                 }
             });
@@ -271,7 +313,6 @@
             });
 
             const performStandardSave = async () => {
-                // This is the original, non-secure save for non-redacted files.
                 const originalFileName = fileInput.files[0]?.name || 'document.pdf';
                 let newFileName = prompt('Enter file name:', `edited-${originalFileName}`);
                 if (newFileName === null) return;
@@ -300,7 +341,7 @@
                 try {
                     const { PDFDocument } = PDFLib;
                     const finalDoc = await PDFDocument.create();
-                    const RENDER_SCALE = 2.0; // Higher scale for better quality
+                    const RENDER_SCALE = 2.0;
 
                     for (const pageNum of pageOrder) {
                         const page = await pdfDoc.getPage(pageNum);
@@ -315,7 +356,6 @@
                         if (pageRedactions.length > 0) {
                             context.fillStyle = 'white';
                             for (const area of pageRedactions) {
-                                // Convert PDF coordinates to canvas coordinates for drawing
                                 const rectX = area.x * RENDER_SCALE;
                                 const rectWidth = area.width * RENDER_SCALE;
                                 const rectHeight = area.height * RENDER_SCALE;
@@ -345,76 +385,200 @@
                 }
             };
 
-            // --- TOOLS & INTERACTION LOGIC ---
-            let interactionStartX, interactionStartY, redactionBox = null;
-
-            const handleInteractionStart = e => {
-                if (!activeTool || !e.target.matches('canvas')) return;
-                e.preventDefault();
-                const touch = e.changedTouches ? e.changedTouches[0] : e;
-                interactionStartX = touch.clientX; interactionStartY = touch.clientY;
-                if (activeTool === 'redact') {
-                    redactionBox = document.createElement('div');
-                    redactionBox.className = 'redaction-box';
-                    pageContainer.appendChild(redactionBox);
-                    updateRedactionBox(e);
-                }
-            };
-
-            const handleInteractionMove = e => {
-                if (!activeTool || !e.target.matches('canvas') || !redactionBox) return;
-                e.preventDefault();
-                updateRedactionBox(e);
-            };
-
-            const handleInteractionEnd = async e => {
-                if (!activeTool || !e.target.matches('canvas')) return;
-                e.preventDefault();
-                const canvas = e.target;
-                const rect = canvas.getBoundingClientRect();
-                const originalPageNum = parseInt(canvas.dataset.pageNum);
-                const page = await pdfDoc.getPage(originalPageNum);
-                const scale = (viewerContainer.clientWidth / page.getViewport({ scale: 1.0 }).width) * 0.95;
-                const viewport = page.getViewport({ scale });
-                
-                if (activeTool === 'redact' && redactionBox) {
-                    const boxRect = redactionBox.getBoundingClientRect();
-                    const [left, top] = viewport.convertToPdfPoint(boxRect.left - rect.left, boxRect.top - rect.top);
-                    const [right, bottom] = viewport.convertToPdfPoint(boxRect.right - rect.left, boxRect.bottom - rect.top);
-                    if ((right - left) > 0 && (top - bottom) > 0) {
-                        redactionAreas.push({ originalPageNum, x: left, y: bottom, width: right - left, height: top - bottom });
-                    }
-                    redactionBox = null; // Don't remove the visual box, just the reference
-                }
-                resetTool();
-            };
+            // --- REDACTION MANAGEMENT ---
             
-            const updateRedactionBox = e => {
-                if (!redactionBox) return;
-                const touch = e.changedTouches ? e.changedTouches[0] : e;
-                const rect = e.target.getBoundingClientRect();
-                const left = Math.min(interactionStartX, touch.clientX) - rect.left;
-                const top = Math.min(interactionStartY, touch.clientY) - rect.top;
-                const width = Math.abs(touch.clientX - interactionStartX);
-                const height = Math.abs(touch.clientY - interactionStartY);
-                redactionBox.style.left = `${left}px`;
-                redactionBox.style.top = `${top}px`;
-                redactionBox.style.width = `${width}px`;
-                redactionBox.style.height = `${height}px`;
+            const renderRedactionBoxes = async () => {
+                document.querySelectorAll('.redaction-box').forEach(box => box.remove());
+                
+                for (const [index, area] of redactionAreas.entries()) {
+                    const page = await pdfDoc.getPage(area.originalPageNum);
+                    const canvas = pageContainer.querySelector(`canvas[data-page-num="${area.originalPageNum}"]`);
+                    if (!canvas) continue;
+
+                    const scale = canvas.width / page.getViewport({scale: 1.0}).width;
+                    const viewport = page.getViewport({ scale });
+
+                    const [x1, y1] = viewport.convertToViewportPoint(area.x, area.y + area.height);
+                    const [x2, y2] = viewport.convertToViewportPoint(area.x + area.width, area.y);
+
+                    const box = document.createElement('div');
+                    box.className = 'redaction-box';
+                    box.dataset.redactionIndex = index;
+                    box.style.left = `${x1}px`;
+                    box.style.top = `${y1}px`;
+                    box.style.width = `${x2 - x1}px`;
+                    box.style.height = `${y2 - y1}px`;
+
+                    canvas.parentElement.appendChild(box);
+                }
             };
+
+            const selectRedactionBox = (boxElement) => {
+                if (selectedRedactionBox) {
+                    selectedRedactionBox.classList.remove('selected', 'resize-mode');
+                    Array.from(selectedRedactionBox.children).forEach(child => child.remove());
+                }
+
+                if (boxElement) {
+                    selectedRedactionBox = boxElement;
+                    selectedRedactionBox.classList.add('selected');
+                    redactionToolbar.classList.add('visible');
+                } else {
+                    selectedRedactionBox = null;
+                    redactionToolbar.classList.remove('visible');
+                }
+            };
+
+            toolbarResizeBtn.addEventListener('click', () => {
+                if (!selectedRedactionBox) return;
+                selectedRedactionBox.classList.toggle('resize-mode');
+                if (selectedRedactionBox.classList.contains('resize-mode')) {
+                     ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+                        const handle = document.createElement('div');
+                        handle.className = `resize-handle ${pos}`;
+                        selectedRedactionBox.appendChild(handle);
+                    });
+                } else {
+                    Array.from(selectedRedactionBox.children).forEach(child => child.remove());
+                }
+            });
+
+            toolbarDeleteBtn.addEventListener('click', async () => {
+                if (!selectedRedactionBox) return;
+                const index = parseInt(selectedRedactionBox.dataset.redactionIndex);
+                redactionAreas.splice(index, 1);
+                await renderRedactionBoxes();
+                selectRedactionBox(null);
+            });
+
+            // --- INTERACTION LOGIC ---
+            let interactionState = { type: null, startX: 0, startY: 0, startLeft: 0, startTop: 0, startWidth: 0, startHeight: 0, handle: null };
 
             pageContainer.addEventListener('mousedown', handleInteractionStart);
-            pageContainer.addEventListener('mousemove', handleInteractionMove);
-            pageContainer.addEventListener('mouseup', handleInteractionEnd);
+            document.addEventListener('mousemove', handleInteractionMove);
+            document.addEventListener('mouseup', handleInteractionEnd);
             pageContainer.addEventListener('touchstart', handleInteractionStart, { passive: false });
-            pageContainer.addEventListener('touchmove', handleInteractionMove, { passive: false });
-            pageContainer.addEventListener('touchend', handleInteractionEnd);
+            document.addEventListener('touchmove', handleInteractionMove, { passive: false });
+            document.addEventListener('touchend', handleInteractionEnd);
             
+            async function handleInteractionStart(e) {
+                const touch = e.changedTouches ? e.changedTouches[0] : e;
+                const target = e.target;
+
+                if (target.classList.contains('resize-handle')) {
+                    e.stopPropagation();
+                    interactionState.type = 'resize';
+                    interactionState.handle = target.classList[1];
+                } else if (target.classList.contains('redaction-box')) {
+                    e.stopPropagation();
+                    interactionState.type = 'move';
+                    selectRedactionBox(target);
+                } else if (target.matches('canvas') && activeTool === 'redact') {
+                    interactionState.type = 'create';
+                    selectRedactionBox(null);
+                } else {
+                    if (!target.closest('#redaction-toolbar')) {
+                       selectRedactionBox(null);
+                    }
+                    interactionState.type = null;
+                    return;
+                }
+
+                interactionState.startX = touch.clientX;
+                interactionState.startY = touch.clientY;
+                if (selectedRedactionBox) {
+                    interactionState.startLeft = selectedRedactionBox.offsetLeft;
+                    interactionState.startTop = selectedRedactionBox.offsetTop;
+                    interactionState.startWidth = selectedRedactionBox.offsetWidth;
+                    interactionState.startHeight = selectedRedactionBox.offsetHeight;
+                }
+            }
+
+            function handleInteractionMove(e) {
+                if (!interactionState.type) return;
+                e.preventDefault();
+                const touch = e.changedTouches ? e.changedTouches[0] : e;
+                const dx = touch.clientX - interactionState.startX;
+                const dy = touch.clientY - interactionState.startY;
+
+                if (interactionState.type === 'move') {
+                    selectedRedactionBox.style.left = `${interactionState.startLeft + dx}px`;
+                    selectedRedactionBox.style.top = `${interactionState.startTop + dy}px`;
+                } else if (interactionState.type === 'resize') {
+                    const { handle, startLeft, startTop, startWidth, startHeight } = interactionState;
+                    if (handle.includes('e')) selectedRedactionBox.style.width = `${startWidth + dx}px`;
+                    if (handle.includes('w')) {
+                        selectedRedactionBox.style.width = `${startWidth - dx}px`;
+                        selectedRedactionBox.style.left = `${startLeft + dx}px`;
+                    }
+                    if (handle.includes('s')) selectedRedactionBox.style.height = `${startHeight + dy}px`;
+                    if (handle.includes('n')) {
+                        selectedRedactionBox.style.height = `${startHeight - dy}px`;
+                        selectedRedactionBox.style.top = `${startTop + dy}px`;
+                    }
+                }
+            }
+            
+            async function handleInteractionEnd(e) {
+                if (!interactionState.type) return;
+                
+                const canvas = selectedRedactionBox ? selectedRedactionBox.closest('.relative').querySelector('canvas') : e.target.closest('canvas');
+                if (!canvas) {
+                    interactionState.type = null;
+                    return;
+                }
+                
+                const pageNum = parseInt(canvas.dataset.pageNum);
+                const page = await pdfDoc.getPage(pageNum);
+                const scale = canvas.width / page.getViewport({scale: 1.0}).width;
+                const viewport = page.getViewport({ scale });
+
+                if (interactionState.type === 'move' || interactionState.type === 'resize') {
+                    const index = parseInt(selectedRedactionBox.dataset.redactionIndex);
+                    const rect = selectedRedactionBox.getBoundingClientRect();
+                    const canvasRect = canvas.getBoundingClientRect();
+                    
+                    const [x1, y1] = viewport.convertToPdfPoint(rect.left - canvasRect.left, rect.top - canvasRect.top);
+                    const [x2, y2] = viewport.convertToPdfPoint(rect.right - canvasRect.left, rect.bottom - canvasRect.top);
+
+                    redactionAreas[index] = {
+                        originalPageNum: pageNum,
+                        x: Math.min(x1, x2),
+                        y: Math.min(y1, y2),
+                        width: Math.abs(x1 - x2),
+                        height: Math.abs(y1 - y2)
+                    };
+                } else if (interactionState.type === 'create') {
+                    const touch = e.changedTouches ? e.changedTouches[0] : e;
+                    const startX = interactionState.startX;
+                    const startY = interactionState.startY;
+                    const endX = touch.clientX;
+                    const endY = touch.clientY;
+                    const canvasRect = canvas.getBoundingClientRect();
+
+                    const [x1, y1] = viewport.convertToPdfPoint(startX - canvasRect.left, startY - canvasRect.top);
+                    const [x2, y2] = viewport.convertToPdfPoint(endX - canvasRect.left, endY - canvasRect.top);
+
+                    if (Math.abs(x1 - x2) > 5 && Math.abs(y1 - y2) > 5) {
+                         redactionAreas.push({
+                            originalPageNum: pageNum,
+                            x: Math.min(x1, x2),
+                            y: Math.min(y1, y2),
+                            width: Math.abs(x1 - x2),
+                            height: Math.abs(y1 - y2)
+                        });
+                        await renderRedactionBoxes();
+                    }
+                    resetTool();
+                }
+                
+                interactionState.type = null;
+            }
+
             const resetTool = () => { activeTool = null; pageContainer.style.cursor = 'default'; };
             const activateTool = (toolName, message) => { activeTool = toolName; alert(message); closeDrawer(); return true; };
-            toolRedactBtn.addEventListener('click', () => { if (activateTool('redact', 'Tap and drag on a page to create a redaction area.')) { /* Intentionally left blank */ } });
+            toolRedactBtn.addEventListener('click', () => { if (activateTool('redact', 'Tap and drag on a page to create a redaction area. Tap existing areas to manage them.')) { /* Intentionally left blank */ } });
 
-            // --- UTILITY FUNCTIONS ---
             const showLoader = text => { loaderText.textContent = text; loaderOverlay.classList.remove('hidden'); };
             const hideLoader = () => loaderOverlay.classList.add('hidden');
             const downloadBlob = (data, fileName) => {
