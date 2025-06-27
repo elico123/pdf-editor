@@ -88,337 +88,401 @@
     </script>
     
     <script>
-        // PDF.js worker configuration
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
-        
-        // DOM Elements
-        const fileInput = document.getElementById('file-input');
-        const openPdfBtn = document.getElementById('open-pdf-btn');
-        const savePdfBtn = document.getElementById('save-pdf-btn');
-        const printPdfBtn = document.getElementById('print-pdf-btn');
-        const sidebar = document.getElementById('sidebar');
-        const viewerContainer = document.getElementById('viewer-container');
-        const pageContainer = document.getElementById('page-container');
-        const thumbnailsContainer = document.getElementById('thumbnails-container');
-        const welcomeMessage = document.getElementById('welcome-message');
-        const loaderOverlay = document.getElementById('loader-overlay');
-        const loaderText = document.getElementById('loader-text');
-        
-        // Tool Buttons
-        const toolMergeBtn = document.getElementById('tool-merge');
-        const toolSplitBtn = document.getElementById('tool-split');
-        const toolAddTextBtn = document.getElementById('tool-add-text');
-        const toolRedactBtn = document.getElementById('tool-redact');
-
-        // App State
-        let pdfDoc = null;
-        let pdfBytes = null;
-        let pageOrder = [];
-        let currentPage = 1;
-        let activeTool = null;
-        let redactionAreas = [];
-
-        // --- CORE PDF HANDLING ---
-
-        const loadPdf = async (file) => {
-            showLoader('Loading PDF...');
-            const arrayBuffer = await file.arrayBuffer();
-            pdfBytes = new Uint8Array(arrayBuffer);
-            pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+        // Wait for the DOM to be fully loaded before running the script
+        document.addEventListener('DOMContentLoaded', () => {
+            // PDF.js worker configuration
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
             
-            pageOrder = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
+            // DOM Elements
+            const fileInput = document.getElementById('file-input');
+            const openPdfBtn = document.getElementById('open-pdf-btn');
+            const savePdfBtn = document.getElementById('save-pdf-btn');
+            const printPdfBtn = document.getElementById('print-pdf-btn');
+            const sidebar = document.getElementById('sidebar');
+            const viewerContainer = document.getElementById('viewer-container');
+            const pageContainer = document.getElementById('page-container');
+            const thumbnailsContainer = document.getElementById('thumbnails-container');
+            const welcomeMessage = document.getElementById('welcome-message');
+            const loaderOverlay = document.getElementById('loader-overlay');
+            const loaderText = document.getElementById('loader-text');
             
-            welcomeMessage.classList.add('hidden');
-            pageContainer.innerHTML = '';
-            thumbnailsContainer.innerHTML = '';
-            sidebar.classList.remove('hidden');
-            savePdfBtn.classList.remove('hidden');
-            printPdfBtn.classList.remove('hidden');
+            // Tool Buttons
+            const toolMergeBtn = document.getElementById('tool-merge');
+            const toolSplitBtn = document.getElementById('tool-split');
+            const toolAddTextBtn = document.getElementById('tool-add-text');
+            const toolRedactBtn = document.getElementById('tool-redact');
 
-            await renderAllPages();
-            await renderThumbnails();
-            
-            hideLoader();
-        };
+            // App State
+            let pdfDoc = null;
+            let pdfBytes = null;
+            let pageOrder = [];
+            let currentPage = 1;
+            let activeTool = null;
+            let redactionAreas = [];
 
-        const renderPage = async (pageNum, container) => {
-            const page = await pdfDoc.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 1.5 });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            canvas.dataset.pageNum = pageNum;
-            
-            const renderContext = {
-                canvasContext: context,
-                viewport: viewport
+            // --- CORE PDF HANDLING ---
+
+            const loadPdf = async (file) => {
+                showLoader('Loading PDF...');
+                const arrayBuffer = await file.arrayBuffer();
+                pdfBytes = new Uint8Array(arrayBuffer);
+                pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
+                
+                pageOrder = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
+                
+                welcomeMessage.classList.add('hidden');
+                pageContainer.innerHTML = '';
+                thumbnailsContainer.innerHTML = '';
+                sidebar.classList.remove('hidden');
+                savePdfBtn.classList.remove('hidden');
+                printPdfBtn.classList.remove('hidden');
+
+                await renderAllPages();
+                await renderThumbnails();
+                
+                hideLoader();
             };
-            await page.render(renderContext).promise;
-            container.appendChild(canvas);
-            return canvas;
-        };
 
-        const renderAllPages = async () => {
-            pageContainer.innerHTML = '';
-            showLoader('Rendering pages...');
-            for (const pageNum of pageOrder) {
-                await renderPage(pageNum, pageContainer);
-            }
-            hideLoader();
-        };
-        
-        const renderThumbnails = async () => {
-            thumbnailsContainer.innerHTML = '';
-            for (let i = 0; i < pageOrder.length; i++) {
-                const pageNum = pageOrder[i];
+            const renderPage = async (pageNum, container) => {
                 const page = await pdfDoc.getPage(pageNum);
-                const viewport = page.getViewport({ scale: 0.3 });
+                const viewport = page.getViewport({ scale: 1.5 });
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
-
+                canvas.dataset.pageNum = pageNum;
+                
                 const renderContext = {
                     canvasContext: context,
                     viewport: viewport
                 };
                 await page.render(renderContext).promise;
-                
-                const thumbItem = document.createElement('div');
-                thumbItem.classList.add('thumbnail-item', 'p-1', 'rounded-md', 'cursor-pointer', 'relative');
-                thumbItem.dataset.originalIndex = pageNum;
-                thumbItem.dataset.currentIndex = i;
-                
-                const pageNumberLabel = document.createElement('span');
-                pageNumberLabel.textContent = i + 1;
-                pageNumberLabel.classList.add('absolute', 'top-1', 'left-1', 'bg-blue-500', 'text-white', 'text-xs', 'font-bold', 'px-1.5', 'py-0.5', 'rounded');
-                
-                thumbItem.appendChild(canvas);
-                thumbItem.appendChild(pageNumberLabel);
-                thumbnailsContainer.appendChild(thumbItem);
-            }
-        };
+                container.appendChild(canvas);
+                return canvas;
+            };
 
-        // --- EVENT LISTENERS ---
-
-        openPdfBtn.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', async (e) => {
-            if (e.target.files.length > 0) {
-                if(activeTool === 'merge') {
-                    await handleMerge(e.target.files);
-                    activeTool = null;
-                } else {
-                    await loadPdf(e.target.files[0]);
+            const renderAllPages = async () => {
+                pageContainer.innerHTML = '';
+                showLoader('Rendering pages...');
+                for (const pageNum of pageOrder) {
+                    await renderPage(pageNum, pageContainer);
                 }
-            }
-        });
-
-        savePdfBtn.addEventListener('click', async () => {
-            showLoader('Saving PDF...');
-            const { PDFDocument } = PDFLib;
-            const newPdfDoc = await PDFDocument.load(pdfBytes);
-            const pages = await newPdfDoc.copyPages(newPdfDoc, pageOrder.map(p => p - 1));
-            
-            const finalDoc = await PDFDocument.create();
-            for(const page of pages) {
-                finalDoc.addPage(page);
-            }
-
-            // Apply redactions if any
-            if (redactionAreas.length > 0) {
-                const { rgb, StandardFonts } = PDFLib;
-                for (const area of redactionAreas) {
-                    const page = finalDoc.getPage(area.pageIndex);
-                    page.drawRectangle({
-                        x: area.x,
-                        y: area.y,
-                        width: area.width,
-                        height: area.height,
-                        color: rgb(0, 0, 0),
-                    });
-                }
-            }
-
-            const finalPdfBytes = await finalDoc.save();
-            const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `edited-${fileInput.files[0]?.name || 'document.pdf'}`;
-            link.click();
-            hideLoader();
-        });
-
-        printPdfBtn.addEventListener('click', () => {
-            // A simplified print. For full accuracy, we'd save and print the new blob.
-            window.print();
-        });
-
-        // --- TOOLS ---
-        
-        // Sorting with SortableJS
-        new Sortable(thumbnailsContainer, {
-            animation: 150,
-            ghostClass: 'sortable-ghost',
-            onEnd: async (evt) => {
-                const element = pageOrder.splice(evt.oldIndex, 1)[0];
-                pageOrder.splice(evt.newIndex, 0, element);
-                showLoader('Reordering pages...');
-                await renderAllPages();
-                await renderThumbnails(); // To update numbering
                 hideLoader();
-            }
-        });
-
-        // Merge
-        toolMergeBtn.addEventListener('click', () => {
-            if (!pdfDoc) {
-                alert('Please open a base PDF first.');
-                return;
-            }
-            activeTool = 'merge';
-            alert('Select additional PDF files to merge.');
-            fileInput.click();
-        });
-        
-        const handleMerge = async (filesToMerge) => {
-            showLoader('Merging PDFs...');
-            const { PDFDocument } = PDFLib;
-            const mergedPdf = await PDFDocument.load(pdfBytes);
-
-            for (const file of filesToMerge) {
-                const bytes = await file.arrayBuffer();
-                const docToMerge = await PDFDocument.load(bytes);
-                const pages = await mergedPdf.copyPages(docToMerge, docToMerge.getPageIndices());
-                pages.forEach(page => mergedPdf.addPage(page));
-            }
-
-            pdfBytes = await mergedPdf.save();
-            pdfDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
-            pageOrder = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
+            };
             
-            await renderAllPages();
-            await renderThumbnails();
-            hideLoader();
-        };
+            const renderThumbnails = async () => {
+                thumbnailsContainer.innerHTML = '';
+                for (let i = 0; i < pageOrder.length; i++) {
+                    const pageNum = pageOrder[i];
+                    const page = await pdfDoc.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 0.3 });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
 
-        // Split
-        toolSplitBtn.addEventListener('click', async () => {
-            if (!pdfDoc) return;
-            const splitIndexStr = prompt(`Enter page number to split AFTER (1-${pageOrder.length}):`);
-            const splitIndex = parseInt(splitIndexStr);
-            
-            if (isNaN(splitIndex) || splitIndex <= 0 || splitIndex >= pageOrder.length) {
-                alert('Invalid split point.');
-                return;
-            }
-
-            showLoader('Splitting PDF...');
-            const { PDFDocument } = PDFLib;
-
-            // Create first part
-            const firstDoc = await PDFDocument.create();
-            const baseDoc1 = await PDFDocument.load(pdfBytes);
-            const firstPagesIndices = pageOrder.slice(0, splitIndex).map(p => p - 1);
-            const firstPages = await firstDoc.copyPages(baseDoc1, firstPagesIndices);
-            firstPages.forEach(p => firstDoc.addPage(p));
-            const firstBytes = await firstDoc.save();
-            downloadBlob(firstBytes, `part1-${fileInput.files[0].name}`);
-
-            // Create second part
-            const secondDoc = await PDFDocument.create();
-            const baseDoc2 = await PDFDocument.load(pdfBytes);
-            const secondPagesIndices = pageOrder.slice(splitIndex).map(p => p - 1);
-            const secondPages = await secondDoc.copyPages(baseDoc2, secondPagesIndices);
-            secondPages.forEach(p => secondDoc.addPage(p));
-            const secondBytes = await secondDoc.save();
-            downloadBlob(secondBytes, `part2-${fileInput.files[0].name}`);
-            
-            hideLoader();
-        });
-
-        // Add Text
-        toolAddTextBtn.addEventListener('click', () => {
-            if (!pdfDoc) return;
-            activeTool = 'add-text';
-            alert('Click on a page to add text.');
-            pageContainer.style.cursor = 'crosshair';
-        });
-
-        // Redact
-        toolRedactBtn.addEventListener('click', () => {
-            if (!pdfDoc) return;
-            activeTool = 'redact';
-            alert('Click and drag on a page to create a redaction area.');
-            pageContainer.style.cursor = 'crosshair';
-            redactionAreas = []; // Clear previous
-        });
-
-        // Handle clicks on page for tools
-        pageContainer.addEventListener('mousedown', async (e) => {
-            if (!activeTool || !e.target.matches('canvas')) return;
-
-            const canvas = e.target;
-            const rect = canvas.getBoundingClientRect();
-            const pageNum = parseInt(canvas.dataset.pageNum);
-            const pageIndex = pageOrder.indexOf(pageNum);
-            const page = await pdfDoc.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 1.5 });
-            
-            // Convert click coordinates to PDF coordinates
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            const pdfX = (x / viewport.width) * page.viewBox[2];
-            const pdfY = (1 - y / viewport.height) * page.viewBox[3];
-
-            if (activeTool === 'add-text') {
-                const text = prompt('Enter text to add:');
-                if (text) {
-                    showLoader('Adding text...');
-                    const { PDFDocument, rgb, StandardFonts } = PDFLib;
-                    const pdfLibDoc = await PDFDocument.load(pdfBytes);
-                    const helveticaFont = await pdfLibDoc.embedFont(StandardFonts.Helvetica);
-                    const pages = pdfLibDoc.getPages();
-                    const targetPage = pages[pageIndex];
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+                    await page.render(renderContext).promise;
                     
-                    targetPage.drawText(text, {
-                        x: pdfX,
-                        y: pdfY,
-                        font: helveticaFont,
-                        size: 12,
-                        color: rgb(0, 0, 0),
-                    });
+                    const thumbItem = document.createElement('div');
+                    thumbItem.classList.add('thumbnail-item', 'p-1', 'rounded-md', 'cursor-pointer', 'relative');
+                    thumbItem.dataset.originalIndex = pageNum;
+                    thumbItem.dataset.currentIndex = i;
+                    
+                    const pageNumberLabel = document.createElement('span');
+                    pageNumberLabel.textContent = i + 1;
+                    pageNumberLabel.classList.add('absolute', 'top-1', 'left-1', 'bg-blue-500', 'text-white', 'text-xs', 'font-bold', 'px-1.5', 'py-0.5', 'rounded');
+                    
+                    thumbItem.appendChild(canvas);
+                    thumbItem.appendChild(pageNumberLabel);
+                    thumbnailsContainer.appendChild(thumbItem);
+                }
+            };
 
-                    pdfBytes = await pdfLibDoc.save();
-                    await loadPdfFromBytes(pdfBytes); // Reload to show changes
+            // --- EVENT LISTENERS ---
+
+            openPdfBtn.addEventListener('click', () => fileInput.click());
+            
+            fileInput.addEventListener('change', async (e) => {
+                if (e.target.files.length > 0) {
+                    if(activeTool === 'merge') {
+                        await handleMerge(e.target.files);
+                        activeTool = null;
+                    } else {
+                        await loadPdf(e.target.files[0]);
+                    }
+                }
+            });
+
+            savePdfBtn.addEventListener('click', async () => {
+                showLoader('Saving PDF...');
+                const { PDFDocument } = PDFLib;
+                const newPdfDoc = await PDFDocument.load(pdfBytes);
+                const pages = await newPdfDoc.copyPages(newPdfDoc, pageOrder.map(p => p - 1));
+                
+                const finalDoc = await PDFDocument.create();
+                for(const page of pages) {
+                    finalDoc.addPage(page);
+                }
+
+                // Apply redactions if any
+                if (redactionAreas.length > 0) {
+                    const { rgb } = PDFLib;
+                    for (const area of redactionAreas) {
+                        const page = finalDoc.getPage(area.pageIndex);
+                        page.drawRectangle({
+                            x: area.x,
+                            y: area.y,
+                            width: area.width,
+                            height: area.height,
+                            color: rgb(0, 0, 0),
+                        });
+                    }
+                }
+
+                const finalPdfBytes = await finalDoc.save();
+                const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `edited-${fileInput.files[0]?.name || 'document.pdf'}`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+                hideLoader();
+            });
+
+            printPdfBtn.addEventListener('click', () => {
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = url;
+                document.body.appendChild(iframe);
+                iframe.contentWindow.print();
+            });
+
+            // --- TOOLS ---
+            
+            // Sorting with SortableJS
+            new Sortable(thumbnailsContainer, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: async (evt) => {
+                    const element = pageOrder.splice(evt.oldIndex, 1)[0];
+                    pageOrder.splice(evt.newIndex, 0, element);
+                    showLoader('Reordering pages...');
+                    await renderAllPages();
+                    await renderThumbnails(); // To update numbering
                     hideLoader();
                 }
-                resetTool();
-            } else if (activeTool === 'redact') {
-                const startX = e.clientX;
-                const startY = e.clientY;
-                const redactionBox = document.createElement('div');
-                redactionBox.classList.add('redaction-box');
-                pageContainer.appendChild(redactionBox);
+            });
 
-                const onMouseMove = (moveE) => {
-                    const currentX = moveE.clientX;
-                    const currentY = moveE.clientY;
-                    const left = Math.min(startX, currentX) - rect.left;
-                    const top = Math.min(startY, currentY) - rect.top;
-                    const width = Math.abs(currentX - startX);
-                    const height = Math.abs(currentY - startY);
-                    redactionBox.style.left = `${left}px`;
-                    redactionBox.style.top = `${top}px`;
-                    redactionBox.style.width = `${width}px`;
-                    redactionBox.style.height = `${height}px`;
-                };
+            // Merge
+            toolMergeBtn.addEventListener('click', () => {
+                if (!pdfDoc) {
+                    alert('Please open a base PDF first.');
+                    return;
+                }
+                activeTool = 'merge';
+                alert('Select additional PDF files to merge.');
+                fileInput.click();
+            });
+            
+            const handleMerge = async (filesToMerge) => {
+                showLoader('Merging PDFs...');
+                const { PDFDocument } = PDFLib;
+                const mergedPdf = await PDFDocument.load(pdfBytes);
 
-                const onMouseUp = (upE) => {
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                    
-                    const boxRect = redactionBox.getBoundingClientRect();
-                    const pdfStartX = (boxRect.left - rect.left) / viewport.width * page.viewBox[2];
-                    const pdfStartY = (1 - (boxRect.top - rect.top + boxRect.height) / viewport.height) * page.viewBox[3];
-                    const pdfWidth = boxRect.width / viewport.width * pag
+                for (const file of filesToMerge) {
+                    const bytes = await file.arrayBuffer();
+                    const docToMerge = await PDFDocument.load(bytes);
+                    const pages = await mergedPdf.copyPages(docToMerge, docToMerge.getPageIndices());
+                    pages.forEach(page => mergedPdf.addPage(page));
+                }
+
+                pdfBytes = await mergedPdf.save();
+                await loadPdfFromBytes(pdfBytes);
+                hideLoader();
+            };
+
+            // Split
+            toolSplitBtn.addEventListener('click', async () => {
+                if (!pdfDoc) return;
+                const splitIndexStr = prompt(`Enter page number to split AFTER (1-${pageOrder.length}):`);
+                const splitIndex = parseInt(splitIndexStr);
+                
+                if (isNaN(splitIndex) || splitIndex <= 0 || splitIndex >= pageOrder.length) {
+                    alert('Invalid split point.');
+                    return;
+                }
+
+                showLoader('Splitting PDF...');
+                const { PDFDocument } = PDFLib;
+
+                // Create first part
+                const firstDoc = await PDFDocument.create();
+                const baseDoc1 = await PDFDocument.load(pdfBytes);
+                const firstPagesIndices = pageOrder.slice(0, splitIndex).map(p => p - 1);
+                const firstPages = await firstDoc.copyPages(baseDoc1, firstPagesIndices);
+                firstPages.forEach(p => firstDoc.addPage(p));
+                const firstBytes = await firstDoc.save();
+                downloadBlob(firstBytes, `part1-${fileInput.files[0].name}`);
+
+                // Create second part
+                const secondDoc = await PDFDocument.create();
+                const baseDoc2 = await PDFDocument.load(pdfBytes);
+                const secondPagesIndices = pageOrder.slice(splitIndex).map(p => p - 1);
+                const secondPages = await secondDoc.copyPages(baseDoc2, secondPagesIndices);
+                secondPages.forEach(p => secondDoc.addPage(p));
+                const secondBytes = await secondDoc.save();
+                downloadBlob(secondBytes, `part2-${fileInput.files[0].name}`);
+                
+                hideLoader();
+            });
+
+            // Add Text
+            toolAddTextBtn.addEventListener('click', () => {
+                if (!pdfDoc) return;
+                activeTool = 'add-text';
+                alert('Click on a page to add text.');
+                pageContainer.style.cursor = 'crosshair';
+            });
+
+            // Redact
+            toolRedactBtn.addEventListener('click', () => {
+                if (!pdfDoc) return;
+                activeTool = 'redact';
+                alert('Click and drag on a page to create a redaction area.');
+                pageContainer.style.cursor = 'crosshair';
+                // Clear previous visual redactions, but not the data
+                 document.querySelectorAll('.redaction-box').forEach(box => box.remove());
+            });
+
+            // Handle clicks on page for tools
+            pageContainer.addEventListener('mousedown', async (e) => {
+                if (!activeTool || !e.target.matches('canvas')) return;
+
+                const canvas = e.target;
+                const rect = canvas.getBoundingClientRect();
+                const pageNum = parseInt(canvas.dataset.pageNum);
+                const pageIndex = pageOrder.indexOf(pageNum);
+                const page = await pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 1.5 });
+                
+                // Convert click coordinates to PDF coordinates
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const pdfX = (x / viewport.width) * page.viewBox[2];
+                const pdfY = page.viewBox[3] - ((y / viewport.height) * page.viewBox[3]);
+
+                if (activeTool === 'add-text') {
+                    const text = prompt('Enter text to add:');
+                    if (text) {
+                        showLoader('Adding text...');
+                        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+                        const pdfLibDoc = await PDFDocument.load(pdfBytes);
+                        const helveticaFont = await pdfLibDoc.embedFont(StandardFonts.Helvetica);
+                        const pages = pdfLibDoc.getPages();
+                        const targetPage = pages[pageIndex];
+                        
+                        targetPage.drawText(text, {
+                            x: pdfX,
+                            y: pdfY,
+                            font: helveticaFont,
+                            size: 12,
+                            color: rgb(0, 0, 0),
+                        });
+
+                        pdfBytes = await pdfLibDoc.save();
+                        await loadPdfFromBytes(pdfBytes); // Reload to show changes
+                        hideLoader();
+                    }
+                    resetTool();
+                } else if (activeTool === 'redact') {
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    const redactionBox = document.createElement('div');
+                    redactionBox.classList.add('redaction-box');
+                    pageContainer.appendChild(redactionBox);
+
+                    const onMouseMove = (moveE) => {
+                        const currentX = moveE.clientX;
+                        const currentY = moveE.clientY;
+                        const left = Math.min(startX, currentX) - rect.left;
+                        const top = Math.min(startY, currentY) - rect.top;
+                        const width = Math.abs(currentX - startX);
+                        const height = Math.abs(currentY - startY);
+                        redactionBox.style.left = `${left + canvas.offsetLeft}px`;
+                        redactionBox.style.top = `${top + canvas.offsetTop}px`;
+                        redactionBox.style.width = `${width}px`;
+                        redactionBox.style.height = `${height}px`;
+                    };
+
+                    const onMouseUp = (upE) => {
+                        document.removeEventListener('mousemove', onMouseMove);
+                        document.removeEventListener('mouseup', onMouseUp);
+                        
+                        const boxRect = redactionBox.getBoundingClientRect();
+                        const pdfStartX = ((boxRect.left - rect.left) / viewport.width) * page.viewBox[2];
+                        const pdfStartY = page.viewBox[3] - (((boxRect.top - rect.top) + boxRect.height) / viewport.height) * page.viewBox[3];
+                        const pdfWidth = (boxRect.width / viewport.width) * page.viewBox[2];
+                        const pdfHeight = (boxRect.height / viewport.height) * page.viewBox[3];
+
+                        redactionAreas.push({
+                            pageIndex: pageIndex,
+                            x: pdfStartX,
+                            y: pdfStartY,
+                            width: pdfWidth,
+                            height: pdfHeight
+                        });
+                        
+                        alert(`Redaction area added. Click 'Save' to apply changes permanently.`);
+                        resetTool();
+                    };
+
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                }
+            });
+            
+            const loadPdfFromBytes = async (bytes) => {
+                pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
+                pageOrder = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
+                await renderAllPages();
+                await renderThumbnails();
+            }
+
+            const resetTool = () => {
+                activeTool = null;
+                pageContainer.style.cursor = 'default';
+            };
+
+            // --- UTILITY FUNCTIONS ---
+
+            const showLoader = (text) => {
+                loaderText.textContent = text;
+                loaderOverlay.classList.remove('hidden');
+            };
+
+            const hideLoader = () => {
+                loaderOverlay.classList.add('hidden');
+            };
+
+            const downloadBlob = (data, fileName) => {
+                const blob = new Blob([data], { type: 'application/pdf' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            };
+        });
+    </script>
+</body>
+</html>
