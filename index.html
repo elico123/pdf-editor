@@ -102,9 +102,7 @@
 </head>
 <body class="bg-gray-100 text-gray-800 flex flex-col h-screen overflow-hidden">
 
-    <!-- Main container -->
     <div class="flex-1 flex flex-col overflow-hidden relative">
-        <!-- Header -->
         <header class="bg-white shadow-md p-4 flex items-center justify-between z-20 flex-shrink-0">
             <div class="flex items-center space-x-4">
                 <button id="menu-btn" class="p-2 rounded-md hover:bg-gray-200 transition hidden">
@@ -119,10 +117,8 @@
         </header>
 
         <div class="flex-1 flex overflow-hidden">
-            <!-- Drawer Overlay -->
             <div id="drawer-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
 
-            <!-- Drawer/Sidebar -->
             <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white p-4 overflow-y-auto border-r border-gray-200 z-40">
                 <h2 class="text-lg font-semibold mb-4">Actions</h2>
                 <div class="space-y-2 mb-6">
@@ -143,7 +139,6 @@
                 <div id="thumbnails-container" class="space-y-2"></div>
             </aside>
 
-            <!-- Main Content -->
             <main id="main-content" class="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
                 <div id="viewer-container" class="flex-1 bg-gray-200 p-2 md:p-4 overflow-y-auto">
                     <div id="welcome-message" class="h-full flex flex-col items-center justify-center text-center p-4">
@@ -156,7 +151,6 @@
             </main>
         </div>
 
-        <!-- Redaction Contextual Toolbar -->
         <div id="redaction-toolbar" class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-2 flex justify-center items-center space-x-4 z-40">
             <button id="toolbar-resize-btn" class="p-2 rounded-md hover:bg-gray-700" title="Resize">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" /></svg>
@@ -166,7 +160,6 @@
             </button>
         </div>
         
-        <!-- Text Editing Contextual Toolbar -->
         <div id="text-toolbar" class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-2 flex justify-center items-center space-x-4 z-40">
             <button id="text-toolbar-resize-btn" class="p-2 rounded-md hover:bg-gray-700" title="Toggle Resizing">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" /></svg>
@@ -182,13 +175,11 @@
     </div>
 
 
-    <!-- Loader -->
     <div id="loader-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32"></div>
         <p id="loader-text" class="text-white text-lg ml-4">Loading...</p>
     </div>
 
-    <!-- Secure Redaction Confirmation Modal -->
     <div id="secure-redact-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
             <h3 class="text-lg font-bold mb-4">Confirm Secure Redaction</h3>
@@ -213,6 +204,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
             
+            const { PDFDocument, rgb, StandardFonts, TextAlignment } = PDFLib;
+
             // --- DOM Element References ---
             const fileInput = document.getElementById('file-input');
             const openPdfBtn = document.getElementById('open-pdf-btn');
@@ -252,6 +245,8 @@
             let pdfDoc = null, pdfBytes = null, pageOrder = [], activeTool = null;
             let redactionAreas = [], textObjects = [];
             let selectedRedactionBox = null, selectedTextBox = null;
+            const METADATA_KEY = 'custom.pdfeditor.data';
+
 
             // --- Core App Logic ---
             const updateActionButtonsState = enabled => actionButtons.forEach(b => b.disabled = !enabled);
@@ -289,7 +284,23 @@
             const loadPdfFromBytes = async bytes => {
                  showLoader('Rendering PDF...');
                  pdfBytes = bytes;
+                 const pdfDocInstance = await PDFDocument.load(bytes, { ignoreEncryption: true });
                  pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
+
+                 // Load edits from metadata
+                 try {
+                    const customData = pdfDocInstance.getCustomMetadata(METADATA_KEY);
+                    if(customData) {
+                        const savedData = JSON.parse(customData);
+                        textObjects = savedData.textObjects || [];
+                        redactionAreas = savedData.redactionAreas || [];
+                    }
+                 } catch (e) {
+                     console.log("No custom metadata found or failed to parse:", e);
+                     textObjects = [];
+                     redactionAreas = [];
+                 }
+                 
                  pageOrder = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
                  await renderAllPages();
                  await renderThumbnails();
@@ -345,8 +356,8 @@
 
             savePdfBtn.addEventListener('click', () => {
                 if (!pdfDoc) return;
-                if (redactionAreas.length > 0) {
-                    secureRedactModal.classList.remove('hidden');
+                if (redactionAreas.length > 0 && confirm("Saving will flatten redactions, making them uneditable. Do you want to proceed?")) {
+                    performSecureRedaction();
                 } else {
                     performStandardSave();
                 }
@@ -366,11 +377,14 @@
                 if (!newFileName.toLowerCase().endsWith('.pdf')) newFileName += '.pdf';
 
                 showLoader('Saving PDF...');
-                const { PDFDocument, rgb, StandardFonts, TextAlignment } = PDFLib;
                 const finalDoc = await PDFDocument.load(pdfBytes);
                 const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
 
-                // Apply text objects
+                // Save editable data to custom metadata
+                const dataToStore = JSON.stringify({ textObjects, redactionAreas });
+                finalDoc.setCustomMetadata(METADATA_KEY, dataToStore);
+
+                // Apply visible text objects
                 for (const textObj of textObjects) {
                     const pageIndex = pageOrder.indexOf(textObj.originalPageNum);
                     if (pageIndex === -1) continue;
@@ -390,25 +404,15 @@
                     });
                 }
                 
-                // Reorder pages if necessary
                 const finalPdfBytes = await finalDoc.save();
-                const reorderedDoc = await PDFDocument.load(finalPdfBytes);
-                const finalFinalDoc = await PDFDocument.create();
-                const pageIndices = pageOrder.map(pNum => reorderedDoc.getPageCount() > (pNum-1) ? (pNum-1) : -1).filter(i => i !== -1);
-                const copiedPages = await finalFinalDoc.copyPages(reorderedDoc, pageIndices);
-                copiedPages.forEach(p => finalFinalDoc.addPage(p));
-
-
-                const finalFinalPdfBytes = await finalFinalDoc.save();
-                downloadBlob(finalFinalPdfBytes, newFileName);
+                downloadBlob(finalPdfBytes, newFileName);
                 hideLoader();
             };
 
             const performSecureRedaction = async () => {
-                alert("Secure redaction will flatten text and redactions into the page image.");
+                alert("This will flatten text and redactions into the page image, making them uneditable.");
                  showLoader('Applying secure redaction...');
                 try {
-                    const { PDFDocument } = PDFLib;
                     const finalDoc = await PDFDocument.create();
                     const RENDER_SCALE = 2.0;
 
@@ -513,14 +517,13 @@
                 const page = await pdfDoc.getPage(textObj.originalPageNum);
                 const scale = canvas.width / page.getViewport({ scale: 1.0 }).width;
 
-                // Adjust width if in auto-size mode
+                // If in auto-size mode, calculate dynamic width
                 if (textObj.autoSize) {
                     const oldWidthPx = box.offsetWidth;
                     
-                    // Let the textarea's content determine the width
-                    box.style.width = 'auto'; 
+                    textarea.style.width = '1px'; // Force shrink to get true scrollWidth
                     const newWidthPx = textarea.scrollWidth + 4; // Add a small buffer
-                    box.style.width = `${newWidthPx}px`;
+                    textarea.style.width = '100%';
 
                     const widthDifference = newWidthPx - oldWidthPx;
 
@@ -531,6 +534,7 @@
                         textObj.x = newLeftPx / scale;
                     }
                     
+                    box.style.width = `${newWidthPx}px`;
                     textObj.width = newWidthPx / scale;
                 }
 
@@ -853,6 +857,7 @@
                     const y = (touch.clientY - canvasRect.top) / scale;
                     
                     textObjects.push({
+                        id: crypto.randomUUID(),
                         originalPageNum: pageNum,
                         text: 'New Text',
                         x, y,
