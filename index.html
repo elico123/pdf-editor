@@ -36,11 +36,9 @@
             </button>
             <h1 class="text-xl md:text-2xl font-bold text-gray-800">PDF Editor</h1>
         </div>
-        <div class="flex items-center space-x-2">
+        <div id="header-actions" class="flex items-center space-x-2">
             <input type="file" id="file-input" class="hidden" accept="application/pdf" multiple>
             <button id="open-pdf-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Open PDF</button>
-            <button id="save-pdf-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 hidden">Save</button>
-            <button id="print-pdf-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 hidden">Print</button>
         </div>
     </header>
 
@@ -49,8 +47,18 @@
 
     <!-- Drawer/Sidebar -->
     <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white p-4 overflow-y-auto border-r border-gray-200 z-30 transition-transform duration-300 ease-in-out">
-        <h2 class="text-lg font-semibold mb-4">Tools & Pages</h2>
+        <h2 class="text-lg font-semibold mb-4">Actions</h2>
         
+        <!-- Main Actions -->
+        <div class="space-y-2 mb-6">
+            <button id="save-pdf-btn" class="w-full text-left bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition">Save</button>
+            <button id="print-pdf-btn" class="w-full text-left bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition">Print</button>
+            <button id="close-pdf-btn" class="w-full text-left bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition">Close</button>
+        </div>
+        
+        <hr class="my-4">
+
+        <h2 class="text-lg font-semibold mb-4">Tools</h2>
         <!-- Tools -->
         <div class="space-y-2 mb-6">
             <button id="tool-merge" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition">Merge Documents</button>
@@ -58,6 +66,8 @@
             <button id="tool-add-text" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition">Add Text</button>
             <button id="tool-redact" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition">Redact</button>
         </div>
+
+        <hr class="my-4">
 
         <!-- Pages -->
         <h3 class="text-md font-semibold mb-2">Pages (Drag to Sort)</h3>
@@ -110,6 +120,7 @@
             const openPdfBtn = document.getElementById('open-pdf-btn');
             const savePdfBtn = document.getElementById('save-pdf-btn');
             const printPdfBtn = document.getElementById('print-pdf-btn');
+            const closePdfBtn = document.getElementById('close-pdf-btn');
             const menuBtn = document.getElementById('menu-btn');
             const sidebar = document.getElementById('sidebar');
             const drawerOverlay = document.getElementById('drawer-overlay');
@@ -153,6 +164,26 @@
 
             // --- CORE PDF HANDLING ---
 
+            const closePdf = () => {
+                pdfDoc = null;
+                pdfBytes = null;
+                pageOrder = [];
+                redactionAreas = [];
+                activeTool = null;
+
+                pageContainer.innerHTML = '';
+                thumbnailsContainer.innerHTML = '';
+                document.querySelectorAll('.redaction-box').forEach(box => box.remove());
+
+                // Hide menu button, show open button
+                menuBtn.classList.add('hidden');
+                openPdfBtn.classList.remove('hidden');
+                
+                welcomeMessage.classList.remove('hidden');
+                fileInput.value = '';
+                closeDrawer();
+            };
+
             const loadPdf = async (file) => {
                 showLoader('Loading PDF...');
                 const arrayBuffer = await file.arrayBuffer();
@@ -160,10 +191,10 @@
                 
                 await loadPdfFromBytes(pdfBytes);
 
+                // Show relevant UI elements
                 welcomeMessage.classList.add('hidden');
                 menuBtn.classList.remove('hidden');
-                savePdfBtn.classList.remove('hidden');
-                printPdfBtn.classList.remove('hidden');
+                openPdfBtn.classList.add('hidden');
                 
                 hideLoader();
             };
@@ -202,7 +233,7 @@
                 for (const pageNum of pageOrder) {
                     await renderPage(pageNum, pageContainer);
                 }
-                viewerContainer.scrollTop = 0; // Ensure view is at the top
+                viewerContainer.scrollTop = 0;
             };
             
             const renderThumbnails = async () => {
@@ -240,6 +271,7 @@
             // --- EVENT LISTENERS ---
 
             openPdfBtn.addEventListener('click', () => fileInput.click());
+            closePdfBtn.addEventListener('click', closePdf);
             
             fileInput.addEventListener('change', async (e) => {
                 if (e.target.files.length > 0) {
@@ -253,6 +285,7 @@
             });
 
             savePdfBtn.addEventListener('click', async () => {
+                closeDrawer();
                 showLoader('Saving PDF...');
                 const { PDFDocument } = PDFLib;
                 const originalDoc = await PDFDocument.load(pdfBytes);
@@ -284,6 +317,7 @@
             });
 
             printPdfBtn.addEventListener('click', async () => {
+                closeDrawer();
                 showLoader('Preparing for print...');
                 const { PDFDocument } = PDFLib;
                 const originalDoc = await PDFDocument.load(pdfBytes);
@@ -310,14 +344,12 @@
 
             // --- TOOLS ---
             
-            // Initialize SortableJS with delay and haptic feedback
             new Sortable(thumbnailsContainer, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                delay: 300, // Wait 300ms before starting a drag
-                delayOnTouchOnly: true, // Only delay on touch devices
+                delay: 300, 
+                delayOnTouchOnly: true,
                 onStart: function (evt) {
-                    // Vibrate on drag start for haptic feedback on supported devices
                     if (navigator.vibrate) {
                         navigator.vibrate(50);
                     }
