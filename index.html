@@ -200,6 +200,7 @@
             const welcomeMessage = document.getElementById('welcome-message');
             const loaderOverlay = document.getElementById('loader-overlay');
             const loaderText = document.getElementById('loader-text');
+            const toolAddTextBtn = document.getElementById('tool-add-text');
             const toolRedactBtn = document.getElementById('tool-redact');
             const secureRedactModal = document.getElementById('secure-redact-modal');
             const cancelRedactBtn = document.getElementById('cancel-redact-btn');
@@ -208,7 +209,7 @@
             const toolbarResizeBtn = document.getElementById('toolbar-resize-btn');
             const toolbarDeleteBtn = document.getElementById('toolbar-delete-btn');
 
-            const actionButtons = [savePdfBtn, printPdfBtn, closePdfBtn, document.getElementById('tool-merge'), document.getElementById('tool-split'), document.getElementById('tool-add-text'), toolRedactBtn];
+            const actionButtons = [savePdfBtn, printPdfBtn, closePdfBtn, document.getElementById('tool-merge'), document.getElementById('tool-split'), toolAddTextBtn, toolRedactBtn];
 
             let pdfDoc = null, pdfBytes = null, pageOrder = [], activeTool = null, redactionAreas = [];
             let selectedRedactionBox = null;
@@ -476,6 +477,8 @@
                 } else if (target.matches('canvas') && activeTool === 'redact') {
                     interactionState.type = 'create';
                     selectRedactionBox(null);
+                } else if (target.matches('canvas') && activeTool === 'add-text') {
+                    interactionState.type = 'add-text';
                 } else {
                     if (!target.closest('#redaction-toolbar')) {
                        selectRedactionBox(null);
@@ -495,7 +498,7 @@
             }
 
             function handleInteractionMove(e) {
-                if (!interactionState.type) return;
+                if (!interactionState.type || interactionState.type === 'add-text') return;
                 e.preventDefault();
                 const touch = e.changedTouches ? e.changedTouches[0] : e;
                 const dx = touch.clientX - interactionState.startX;
@@ -570,6 +573,27 @@
                         await renderRedactionBoxes();
                     }
                     resetTool();
+                } else if (interactionState.type === 'add-text') {
+                    const touch = e.changedTouches ? e.changedTouches[0] : e;
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    const [pdfX, pdfY] = viewport.convertToPdfPoint(x, y);
+                    
+                    const text = prompt('Enter text to add:');
+                    if (text) {
+                        showLoader('Adding text...');
+                        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+                        const pdfLibDoc = await PDFDocument.load(pdfBytes);
+                        const helveticaFont = await pdfLibDoc.embedFont(StandardFonts.Helvetica);
+                        const pageIndex = pageOrder.indexOf(pageNum);
+                        const targetPage = pdfLibDoc.getPage(pageIndex);
+                        targetPage.drawText(text, { x: pdfX, y: pdfY, font: helveticaFont, size: 12, color: rgb(0, 0, 0) });
+                        const finalBytes = await pdfLibDoc.save();
+                        await loadPdfFromBytes(finalBytes);
+                        hideLoader();
+                    }
+                    resetTool();
                 }
                 
                 interactionState.type = null;
@@ -577,6 +601,7 @@
 
             const resetTool = () => { activeTool = null; pageContainer.style.cursor = 'default'; };
             const activateTool = (toolName, message) => { activeTool = toolName; alert(message); closeDrawer(); return true; };
+            toolAddTextBtn.addEventListener('click', () => { if (activateTool('add-text', 'Tap on a page to add text.')) { /* Intentionally left blank */ } });
             toolRedactBtn.addEventListener('click', () => { if (activateTool('redact', 'Tap and drag on a page to create a redaction area. Tap existing areas to manage them.')) { /* Intentionally left blank */ } });
 
             const showLoader = text => { loaderText.textContent = text; loaderOverlay.classList.remove('hidden'); };
