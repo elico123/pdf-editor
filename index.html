@@ -238,7 +238,7 @@
             let pdfDoc = null, pdfBytes = null, pageOrder = [], activeTool = null;
             let redactionAreas = [], textObjects = [];
             let selectedRedactionBox = null, selectedTextBox = null;
-            const METADATA_KEY = 'custom.pdfeditor.data';
+            const METADATA_KEY = 'pdf-editor-data.json';
 
 
             // --- Core App Logic ---
@@ -282,14 +282,17 @@
 
                  // Load edits from metadata
                  try {
-                    const customData = pdfDocInstance.getCustomMetadata(METADATA_KEY);
-                    if(customData) {
+                    const attachments = await pdfDocInstance.getAttachments();
+                    const editorDataAttachment = attachments.find(a => a.name === METADATA_KEY);
+
+                    if (editorDataAttachment && editorDataAttachment.data) {
+                        const customData = new TextDecoder().decode(editorDataAttachment.data);
                         const savedData = JSON.parse(customData);
                         textObjects = savedData.textObjects || [];
                         redactionAreas = savedData.redactionAreas || [];
                     }
                  } catch (e) {
-                     console.log("No custom metadata found or failed to parse:", e);
+                     console.log("No attachments found or failed to parse:", e);
                      textObjects = [];
                      redactionAreas = [];
                  }
@@ -355,40 +358,76 @@
             const performStandardSave = async () => {
                 showLoader('Saving PDF...');
                 try {
-                    const originalFileName = fileInput.files[0]?.name.replace(/\.pdf$/i, '') || 'document';
-                    const newFileName = `${originalFileName}-edited.pdf`;
+                    if (!pdfBytes) {
+                        throw new Error("PDF data is not available.");
+                    }
 
                     const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
                     const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
 
-                    // Save editable data to custom metadata
+                    // Save editable data as an attachment
                     const dataToStore = JSON.stringify({ textObjects, redactionAreas });
-                    finalDoc.setCustomMetadata(METADATA_KEY, dataToStore);
+                    const customDataBytes = new TextEncoder().encode(dataToStore);
+                    await finalDoc.attach(customDataBytes, METADATA_KEY, {
+                        mimeType: 'application/json',
+                        description: 'Editable data for PDF Editor',
+                    });
 
                     // Apply visible text objects for viewing in other readers
                     for (const textObj of textObjects) {
                         const pageIndex = pageOrder.indexOf(textObj.originalPageNum);
                         if (pageIndex === -1) continue;
+                        
                         const page = finalDoc.getPage(pageIndex);
-                        const { height } = page.getSize();
+                        const { height: pageHeight } = page.getSize();
                         const color = hexToRgb(textObj.color);
 
+                        const x = parseFloat(textObj.x);
+                        const y = parseFloat(textObj.y);
+                        const fontSize = parseFloat(textObj.fontSize);
+                        const width = parseFloat(textObj.width);
+                        const lineHeight = fontSize * 1.2;
+
+                        if ([x, y, fontSize, width].some(isNaN)) {
+                            console.error("Invalid text object property, skipping:", textObj);
+                            continue;
+                        }
+
                         page.drawText(textObj.text, {
-                            x: textObj.x,
-                            y: height - textObj.y - textObj.fontSize, // Y is baseline of first line
+                            x: x,
+                            y: pageHeight - y - fontSize, // Y is baseline of first line
                             font: helveticaFont,
-                            size: textObj.fontSize,
+                            size: fontSize,
                             color: rgb(color.r / 255, color.g / 255, color.b / 255),
-                            lineHeight: textObj.fontSize * 1.2,
-                            maxWidth: textObj.width,
+                            lineHeight: lineHeight,
+                            maxWidth: width,
                             textAlign: textObj.direction === 'rtl' ? TextAlignment.Right : TextAlignment.Left,
                         });
                     }
                     
                     const finalPdfBytes = await finalDoc.save();
+                    
+                    const originalFileName = (fileInput.files[0]?.name || 'document.pdf').replace(/\.pdf$/i, '');
+                    const newFileName = `${originalFileName}-edited.pdf`;
+                    
                     downloadBlob(finalPdfBytes, newFileName);
+
                 } catch (error) {
                     console.error("Failed to save PDF:", error);
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.position = 'fixed';
+                    errorDiv.style.bottom = '20px';
+                    errorDiv.style.left = '50%';
+                    errorDiv.style.transform = 'translateX(-50%)';
+                    errorDiv.style.padding = '1rem';
+                    errorDiv.style.backgroundColor = '#ef4444';
+                    errorDiv.style.color = 'white';
+                    errorDiv.style.borderRadius = '0.5rem';
+                    errorDiv.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                    errorDiv.style.zIndex = '10000';
+                    errorDiv.textContent = `Error saving file: ${error.message}`;
+                    document.body.appendChild(errorDiv);
+                    setTimeout(() => errorDiv.remove(), 5000);
                 } finally {
                     hideLoader();
                 }
