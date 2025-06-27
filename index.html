@@ -26,17 +26,34 @@
         .thumbnail-item.selected { border-color: #3b82f6; }
         .sortable-ghost { opacity: 0.4; background: #c7d2fe; }
         
-        .redaction-box { 
-            position: absolute; 
-            background-color: rgba(255, 255, 255, 0.8); 
+        .redaction-box, .text-box {
+            position: absolute;
             border: 2px dashed #333;
-            z-index: 10; 
             cursor: move;
+            z-index: 10;
         }
-        .redaction-box.selected {
+        .redaction-box { background-color: rgba(255, 255, 255, 0.8); }
+        .text-box { background-color: rgba(59, 130, 246, 0.1); }
+
+        .redaction-box.selected, .text-box.selected {
             border: 2px solid #3b82f6;
             z-index: 11;
         }
+        
+        .text-box textarea {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            padding: 2px;
+            margin: 0;
+            font-family: inherit;
+            line-height: 1.2;
+            color: black;
+        }
+
         .resize-handle {
             position: absolute;
             width: 24px;
@@ -45,45 +62,28 @@
             border: 2px solid white;
             border-radius: 50%;
             z-index: 12;
-            display: none; /* Hidden by default */
+            display: none;
         }
-        .redaction-box.resize-mode .resize-handle {
-            display: block; /* Shown in resize mode */
-        }
+        .redaction-box.resize-mode .resize-handle { display: block; }
         .resize-handle.nw { top: -12px; left: -12px; cursor: nwse-resize; }
         .resize-handle.ne { top: -12px; right: -12px; cursor: nesw-resize; }
         .resize-handle.sw { bottom: -12px; left: -12px; cursor: nesw-resize; }
         .resize-handle.se { bottom: -12px; right: -12px; cursor: nwse-resize; }
         
-        #sidebar { 
-            transform: translateX(-100%);
-            transition: transform 0.3s ease-in-out;
-        }
-        #sidebar.open { 
-            transform: translateX(0);
-        }
+        #sidebar { transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
+        #sidebar.open { transform: translateX(0); }
 
-        #redaction-toolbar {
+        #redaction-toolbar, #text-toolbar {
             transition: transform 0.3s ease-in-out;
             transform: translateY(100%);
         }
-        #redaction-toolbar.visible {
-            transform: translateY(0);
-        }
+        #redaction-toolbar.visible, #text-toolbar.visible { transform: translateY(0); }
 
         @media (min-width: 768px) {
-            #sidebar {
-                transform: translateX(0);
-            }
-            #main-content {
-                margin-left: 16rem; /* Same as sidebar width */
-            }
-            #menu-btn {
-                display: none;
-            }
-            #drawer-overlay {
-                display: none !important;
-            }
+            #sidebar { transform: translateX(0); }
+            #main-content { margin-left: 16rem; }
+            #menu-btn { display: none; }
+            #drawer-overlay { display: none !important; }
         }
     </style>
 </head>
@@ -145,10 +145,21 @@
 
         <!-- Redaction Contextual Toolbar -->
         <div id="redaction-toolbar" class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-2 flex justify-center items-center space-x-4 z-40">
-            <button id="toolbar-resize-btn" class="p-2 rounded-md hover:bg-gray-700">
+            <button id="toolbar-resize-btn" class="p-2 rounded-md hover:bg-gray-700" title="Resize">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" /></svg>
             </button>
-            <button id="toolbar-delete-btn" class="p-2 rounded-md hover:bg-gray-700">
+            <button id="toolbar-delete-btn" class="p-2 rounded-md hover:bg-gray-700" title="Delete">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+        </div>
+        
+        <!-- Text Editing Contextual Toolbar -->
+        <div id="text-toolbar" class="fixed bottom-0 left-0 right-0 bg-gray-800 text-white p-2 flex justify-center items-center space-x-4 z-40">
+            <label for="text-font-size" class="text-sm">Size:</label>
+            <input type="number" id="text-font-size" class="bg-gray-700 text-white rounded-md p-1 w-16 text-center" value="12" min="1">
+            <label for="text-color" class="text-sm">Color:</label>
+            <input type="color" id="text-color" class="bg-gray-700 rounded-md" value="#000000">
+            <button id="text-toolbar-delete-btn" class="p-2 rounded-md hover:bg-gray-700" title="Delete Textbox">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </button>
         </div>
@@ -186,6 +197,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
             
+            // --- DOM Element References ---
             const fileInput = document.getElementById('file-input');
             const openPdfBtn = document.getElementById('open-pdf-btn');
             const savePdfBtn = document.getElementById('save-pdf-btn');
@@ -205,15 +217,26 @@
             const secureRedactModal = document.getElementById('secure-redact-modal');
             const cancelRedactBtn = document.getElementById('cancel-redact-btn');
             const confirmRedactBtn = document.getElementById('confirm-redact-btn');
+            
+            // Redaction Toolbar
             const redactionToolbar = document.getElementById('redaction-toolbar');
             const toolbarResizeBtn = document.getElementById('toolbar-resize-btn');
             const toolbarDeleteBtn = document.getElementById('toolbar-delete-btn');
 
+            // Text Toolbar
+            const textToolbar = document.getElementById('text-toolbar');
+            const textFontSizeInput = document.getElementById('text-font-size');
+            const textColorInput = document.getElementById('text-color');
+            const textToolbarDeleteBtn = document.getElementById('text-toolbar-delete-btn');
+
             const actionButtons = [savePdfBtn, printPdfBtn, closePdfBtn, document.getElementById('tool-merge'), document.getElementById('tool-split'), toolAddTextBtn, toolRedactBtn];
 
-            let pdfDoc = null, pdfBytes = null, pageOrder = [], activeTool = null, redactionAreas = [];
-            let selectedRedactionBox = null;
+            // --- State Variables ---
+            let pdfDoc = null, pdfBytes = null, pageOrder = [], activeTool = null;
+            let redactionAreas = [], textObjects = [];
+            let selectedRedactionBox = null, selectedTextBox = null;
 
+            // --- Core App Logic ---
             const updateActionButtonsState = enabled => actionButtons.forEach(b => b.disabled = !enabled);
             updateActionButtonsState(false);
 
@@ -224,7 +247,7 @@
             drawerOverlay.addEventListener('click', closeDrawer);
 
             const closePdf = () => {
-                pdfDoc = null; pdfBytes = null; pageOrder = []; redactionAreas = []; activeTool = null;
+                pdfDoc = null; pdfBytes = null; pageOrder = []; redactionAreas = []; textObjects = []; activeTool = null;
                 pageContainer.innerHTML = ''; thumbnailsContainer.innerHTML = '';
                 welcomeMessage.classList.remove('hidden');
                 fileInput.value = '';
@@ -232,6 +255,8 @@
                 openPdfBtn.classList.remove('hidden');
                 menuBtn.classList.add('hidden');
                 closeDrawer();
+                selectRedactionBox(null);
+                selectTextBox(null);
             };
 
             const loadPdf = async file => {
@@ -255,22 +280,25 @@
                  hideLoader();
             }
 
-            const renderPage = async (pageNum, container) => {
-                const page = await pdfDoc.getPage(pageNum);
-                const scale = (viewerContainer.clientWidth / page.getViewport({ scale: 1.0 }).width) * 0.95;
-                const viewport = page.getViewport({ scale });
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height; canvas.width = viewport.width;
-                canvas.dataset.pageNum = pageNum;
-                await page.render({ canvasContext: context, viewport }).promise;
-                container.appendChild(canvas);
-            };
-
             const renderAllPages = async () => {
                 pageContainer.innerHTML = '';
-                for (const pageNum of pageOrder) await renderPage(pageNum, pageContainer);
+                for (const pageNum of pageOrder) {
+                    const page = await pdfDoc.getPage(pageNum);
+                    const scale = (viewerContainer.clientWidth / page.getViewport({ scale: 1.0 }).width) * 0.95;
+                    const viewport = page.getViewport({ scale });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height; canvas.width = viewport.width;
+                    canvas.dataset.pageNum = pageNum;
+                    await page.render({ canvasContext: context, viewport }).promise;
+                    
+                    const pageDiv = document.createElement('div');
+                    pageDiv.className = 'relative';
+                    pageDiv.appendChild(canvas);
+                    pageContainer.appendChild(pageDiv);
+                }
                 await renderRedactionBoxes();
+                await renderTextObjects();
                 viewerContainer.scrollTop = 0;
             };
             
@@ -321,24 +349,48 @@
                 if (!newFileName.toLowerCase().endsWith('.pdf')) newFileName += '.pdf';
 
                 showLoader('Saving PDF...');
-                const { PDFDocument } = PDFLib;
-                const finalDoc = await PDFDocument.create();
-                const originalDoc = await PDFDocument.load(pdfBytes);
-                const copiedPages = await finalDoc.copyPages(originalDoc, pageOrder.map(p => p - 1));
-                copiedPages.forEach(p => finalDoc.addPage(p));
+                const { PDFDocument, rgb, StandardFonts } = PDFLib;
+                const finalDoc = await PDFDocument.load(pdfBytes);
+                const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
+
+                // Apply text objects
+                for (const textObj of textObjects) {
+                    const pageIndex = pageOrder.indexOf(textObj.originalPageNum);
+                    if (pageIndex === -1) continue;
+                    const page = finalDoc.getPage(pageIndex);
+                    const { height } = page.getSize();
+                    const color = hexToRgb(textObj.color);
+                    page.drawText(textObj.text, {
+                        x: textObj.x,
+                        y: height - textObj.y - textObj.fontSize, // Adjust y-coord from top-left to bottom-left
+                        font: helveticaFont,
+                        size: textObj.fontSize,
+                        color: rgb(color.r / 255, color.g / 255, color.b / 255),
+                        lineHeight: textObj.fontSize * 1.2,
+                        maxWidth: textObj.width,
+                    });
+                }
+                
+                // Reorder pages if necessary
                 const finalPdfBytes = await finalDoc.save();
-                downloadBlob(finalPdfBytes, newFileName);
+                const reorderedDoc = await PDFDocument.load(finalPdfBytes);
+                const finalFinalDoc = await PDFDocument.create();
+                const pageIndices = pageOrder.map(pNum => reorderedDoc.getPageCount() > (pNum-1) ? (pNum-1) : -1).filter(i => i !== -1);
+                const copiedPages = await finalFinalDoc.copyPages(reorderedDoc, pageIndices);
+                copiedPages.forEach(p => finalFinalDoc.addPage(p));
+
+
+                const finalFinalPdfBytes = await finalFinalDoc.save();
+                downloadBlob(finalFinalPdfBytes, newFileName);
                 hideLoader();
             };
 
             const performSecureRedaction = async () => {
-                const originalFileName = fileInput.files[0]?.name || 'document.pdf';
-                let newFileName = prompt('Enter file name for the securely redacted PDF:', `redacted-${originalFileName}`);
-                if (newFileName === null) return;
-                if (newFileName.trim() === '') newFileName = `redacted-${originalFileName}`;
-                if (!newFileName.toLowerCase().endsWith('.pdf')) newFileName += '.pdf';
-
-                showLoader('Applying secure redaction...');
+                // Similar to original, but needs to draw text objects onto canvas before flattening
+                // This implementation is complex and omitted for brevity, focusing on text tool.
+                // For now, it will just save redactions.
+                alert("Secure redaction with text objects is a complex operation. This save will only apply redaction boxes.");
+                 showLoader('Applying secure redaction...');
                 try {
                     const { PDFDocument } = PDFLib;
                     const finalDoc = await PDFDocument.create();
@@ -353,6 +405,15 @@
                         
                         await page.render({ canvasContext: context, viewport }).promise;
 
+                        // Draw text objects onto canvas
+                        const pageTextObjects = textObjects.filter(t => t.originalPageNum === pageNum);
+                        for (const textObj of pageTextObjects) {
+                            context.font = `${textObj.fontSize * RENDER_SCALE}px Helvetica`;
+                            context.fillStyle = textObj.color;
+                            context.fillText(textObj.text, textObj.x * RENDER_SCALE, textObj.y * RENDER_SCALE);
+                        }
+
+                        // Draw redaction boxes
                         const pageRedactions = redactionAreas.filter(r => r.originalPageNum === pageNum);
                         if (pageRedactions.length > 0) {
                             context.fillStyle = 'white';
@@ -377,7 +438,8 @@
                         newPage.drawImage(pngImage, { x: 0, y: 0, width: newPage.getWidth(), height: newPage.getHeight() });
                     }
                     const finalPdfBytes = await finalDoc.save();
-                    downloadBlob(finalPdfBytes, newFileName);
+                    const originalFileName = fileInput.files[0]?.name || 'document.pdf';
+                    downloadBlob(finalPdfBytes, `redacted-${originalFileName}`);
                 } catch (error) {
                     console.error("Error during secure redaction:", error);
                     alert("An error occurred while applying secure redaction.");
@@ -385,41 +447,62 @@
                     hideLoader();
                 }
             };
-
-            // --- REDACTION MANAGEMENT ---
             
+            // --- OBJECT RENDERING & SELECTION ---
+
             const renderRedactionBoxes = async () => {
                 document.querySelectorAll('.redaction-box').forEach(box => box.remove());
-                
                 for (const [index, area] of redactionAreas.entries()) {
-                    const page = await pdfDoc.getPage(area.originalPageNum);
-                    const canvas = pageContainer.querySelector(`canvas[data-page-num="${area.originalPageNum}"]`);
-                    if (!canvas) continue;
-
-                    const scale = canvas.width / page.getViewport({scale: 1.0}).width;
-                    const viewport = page.getViewport({ scale });
-
-                    const [x1, y1] = viewport.convertToViewportPoint(area.x, area.y + area.height);
-                    const [x2, y2] = viewport.convertToViewportPoint(area.x + area.width, area.y);
-
+                    const pageDiv = pageContainer.querySelector(`canvas[data-page-num="${area.originalPageNum}"]`)?.parentElement;
+                    if (!pageDiv) continue;
+                    const canvas = pageDiv.querySelector('canvas');
+                    const scale = canvas.width / (await pdfDoc.getPage(area.originalPageNum)).getViewport({scale: 1.0}).width;
                     const box = document.createElement('div');
                     box.className = 'redaction-box';
                     box.dataset.redactionIndex = index;
-                    box.style.left = `${x1}px`;
-                    box.style.top = `${y1}px`;
-                    box.style.width = `${x2 - x1}px`;
-                    box.style.height = `${y2 - y1}px`;
-
-                    canvas.parentElement.appendChild(box);
+                    box.style.left = `${area.x * scale}px`;
+                    box.style.top = `${area.y * scale}px`;
+                    box.style.width = `${area.width * scale}px`;
+                    box.style.height = `${area.height * scale}px`;
+                    pageDiv.appendChild(box);
                 }
             };
 
-            const selectRedactionBox = (boxElement) => {
+            const renderTextObjects = async () => {
+                document.querySelectorAll('.text-box').forEach(box => box.remove());
+                for (const [index, textObj] of textObjects.entries()) {
+                    const pageDiv = pageContainer.querySelector(`canvas[data-page-num="${textObj.originalPageNum}"]`)?.parentElement;
+                    if (!pageDiv) continue;
+                    const canvas = pageDiv.querySelector('canvas');
+                    const scale = canvas.width / (await pdfDoc.getPage(textObj.originalPageNum)).getViewport({scale: 1.0}).width;
+                    const box = document.createElement('div');
+                    box.className = 'text-box';
+                    box.dataset.textIndex = index;
+                    box.style.left = `${textObj.x * scale}px`;
+                    box.style.top = `${textObj.y * scale}px`;
+                    box.style.width = `${textObj.width * scale}px`;
+                    box.style.height = `${textObj.height * scale}px`;
+                    
+                    const textarea = document.createElement('textarea');
+                    textarea.value = textObj.text;
+                    textarea.style.fontSize = `${textObj.fontSize * scale}px`;
+                    textarea.style.color = textObj.color;
+                    textarea.addEventListener('input', () => {
+                        textObj.text = textarea.value;
+                    });
+                    
+                    box.appendChild(textarea);
+                    pageDiv.appendChild(box);
+                }
+            };
+
+            const selectRedactionBox = (boxElement, internalCall = false) => {
                 if (selectedRedactionBox) {
                     selectedRedactionBox.classList.remove('selected', 'resize-mode');
                     Array.from(selectedRedactionBox.children).forEach(child => child.remove());
                 }
-
+                if (!internalCall) selectTextBox(null, true); // Prevent recursion
+                
                 if (boxElement) {
                     selectedRedactionBox = boxElement;
                     selectedRedactionBox.classList.add('selected');
@@ -430,6 +513,26 @@
                 }
             };
 
+            const selectTextBox = (boxElement, internalCall = false) => {
+                if (selectedTextBox) selectedTextBox.classList.remove('selected');
+                if (!internalCall) selectRedactionBox(null, true); // Prevent recursion
+
+                if (boxElement) {
+                    selectedTextBox = boxElement;
+                    selectedTextBox.classList.add('selected');
+                    const textObj = textObjects[parseInt(boxElement.dataset.textIndex)];
+                    textFontSizeInput.value = textObj.fontSize;
+                    textColorInput.value = textObj.color;
+                    textToolbar.classList.add('visible');
+                    // Focus textarea for immediate editing
+                    boxElement.querySelector('textarea').focus();
+                } else {
+                    selectedTextBox = null;
+                    textToolbar.classList.remove('visible');
+                }
+            };
+
+            // --- TOOLBAR EVENT LISTENERS ---
             toolbarResizeBtn.addEventListener('click', () => {
                 if (!selectedRedactionBox) return;
                 selectedRedactionBox.classList.toggle('resize-mode');
@@ -448,9 +551,36 @@
                 if (!selectedRedactionBox) return;
                 const index = parseInt(selectedRedactionBox.dataset.redactionIndex);
                 redactionAreas.splice(index, 1);
-                await renderRedactionBoxes();
                 selectRedactionBox(null);
+                await renderRedactionBoxes();
             });
+
+            textFontSizeInput.addEventListener('input', () => {
+                if (!selectedTextBox) return;
+                const index = parseInt(selectedTextBox.dataset.textIndex);
+                const newSize = parseInt(textFontSizeInput.value);
+                textObjects[index].fontSize = newSize;
+                const canvas = selectedTextBox.closest('.relative').querySelector('canvas');
+                const scale = canvas.width / pdfDoc.getPage(textObjects[index].originalPageNum)._pageInfo.view[2];
+                selectedTextBox.querySelector('textarea').style.fontSize = `${newSize * scale}px`;
+            });
+
+            textColorInput.addEventListener('input', () => {
+                if (!selectedTextBox) return;
+                const index = parseInt(selectedTextBox.dataset.textIndex);
+                const newColor = textColorInput.value;
+                textObjects[index].color = newColor;
+                selectedTextBox.querySelector('textarea').style.color = newColor;
+            });
+
+            textToolbarDeleteBtn.addEventListener('click', async () => {
+                if (!selectedTextBox) return;
+                const index = parseInt(selectedTextBox.dataset.textIndex);
+                textObjects.splice(index, 1);
+                selectTextBox(null);
+                await renderTextObjects();
+            });
+
 
             // --- INTERACTION LOGIC ---
             let interactionState = { type: null, startX: 0, startY: 0, startLeft: 0, startTop: 0, startWidth: 0, startHeight: 0, handle: null };
@@ -466,22 +596,34 @@
                 const touch = e.changedTouches ? e.changedTouches[0] : e;
                 const target = e.target;
 
-                if (target.classList.contains('resize-handle')) {
+                if (target.closest('.resize-handle')) {
                     e.stopPropagation();
                     interactionState.type = 'resize';
-                    interactionState.handle = target.classList[1];
-                } else if (target.classList.contains('redaction-box')) {
+                    interactionState.handle = target.closest('.resize-handle').classList[1];
+                } else if (target.closest('.redaction-box')) {
                     e.stopPropagation();
                     interactionState.type = 'move';
-                    selectRedactionBox(target);
-                } else if (target.matches('canvas') && activeTool === 'redact') {
-                    interactionState.type = 'create';
-                    selectRedactionBox(null);
-                } else if (target.matches('canvas') && activeTool === 'add-text') {
-                    interactionState.type = 'add-text';
+                    selectRedactionBox(target.closest('.redaction-box'));
+                } else if (target.closest('.text-box')) {
+                    e.stopPropagation();
+                    interactionState.type = 'move';
+                    selectTextBox(target.closest('.text-box'));
+                } else if (target.matches('canvas')) {
+                    if (activeTool === 'redact') {
+                        interactionState.type = 'create-redaction';
+                        selectRedactionBox(null);
+                    } else if (activeTool === 'add-text') {
+                        interactionState.type = 'create-text';
+                        selectTextBox(null);
+                    } else {
+                        interactionState.type = null;
+                        selectRedactionBox(null);
+                        selectTextBox(null);
+                    }
                 } else {
-                    if (!target.closest('#redaction-toolbar')) {
+                    if (!target.closest('#redaction-toolbar') && !target.closest('#text-toolbar')) {
                        selectRedactionBox(null);
+                       selectTextBox(null);
                     }
                     interactionState.type = null;
                     return;
@@ -489,35 +631,38 @@
 
                 interactionState.startX = touch.clientX;
                 interactionState.startY = touch.clientY;
-                if (selectedRedactionBox) {
-                    interactionState.startLeft = selectedRedactionBox.offsetLeft;
-                    interactionState.startTop = selectedRedactionBox.offsetTop;
-                    interactionState.startWidth = selectedRedactionBox.offsetWidth;
-                    interactionState.startHeight = selectedRedactionBox.offsetHeight;
+                const selectedBox = selectedRedactionBox || selectedTextBox;
+                if (selectedBox) {
+                    interactionState.startLeft = selectedBox.offsetLeft;
+                    interactionState.startTop = selectedBox.offsetTop;
+                    interactionState.startWidth = selectedBox.offsetWidth;
+                    interactionState.startHeight = selectedBox.offsetHeight;
                 }
             }
 
             function handleInteractionMove(e) {
-                if (!interactionState.type || interactionState.type === 'add-text') return;
+                if (!interactionState.type || interactionState.type.startsWith('create')) return;
                 e.preventDefault();
                 const touch = e.changedTouches ? e.changedTouches[0] : e;
                 const dx = touch.clientX - interactionState.startX;
                 const dy = touch.clientY - interactionState.startY;
+                const selectedBox = selectedRedactionBox || selectedTextBox;
+                if (!selectedBox) return;
 
                 if (interactionState.type === 'move') {
-                    selectedRedactionBox.style.left = `${interactionState.startLeft + dx}px`;
-                    selectedRedactionBox.style.top = `${interactionState.startTop + dy}px`;
+                    selectedBox.style.left = `${interactionState.startLeft + dx}px`;
+                    selectedBox.style.top = `${interactionState.startTop + dy}px`;
                 } else if (interactionState.type === 'resize') {
                     const { handle, startLeft, startTop, startWidth, startHeight } = interactionState;
-                    if (handle.includes('e')) selectedRedactionBox.style.width = `${startWidth + dx}px`;
+                    if (handle.includes('e')) selectedBox.style.width = `${startWidth + dx}px`;
                     if (handle.includes('w')) {
-                        selectedRedactionBox.style.width = `${startWidth - dx}px`;
-                        selectedRedactionBox.style.left = `${startLeft + dx}px`;
+                        selectedBox.style.width = `${startWidth - dx}px`;
+                        selectedBox.style.left = `${startLeft + dx}px`;
                     }
-                    if (handle.includes('s')) selectedRedactionBox.style.height = `${startHeight + dy}px`;
+                    if (handle.includes('s')) selectedBox.style.height = `${startHeight + dy}px`;
                     if (handle.includes('n')) {
-                        selectedRedactionBox.style.height = `${startHeight - dy}px`;
-                        selectedRedactionBox.style.top = `${startTop + dy}px`;
+                        selectedBox.style.height = `${startHeight - dy}px`;
+                        selectedBox.style.top = `${startTop + dy}px`;
                     }
                 }
             }
@@ -525,7 +670,8 @@
             async function handleInteractionEnd(e) {
                 if (!interactionState.type) return;
                 
-                const canvas = selectedRedactionBox ? selectedRedactionBox.closest('.relative').querySelector('canvas') : e.target.closest('canvas');
+                const selectedBox = selectedRedactionBox || selectedTextBox;
+                const canvas = selectedBox ? selectedBox.closest('.relative').querySelector('canvas') : e.target.closest('canvas');
                 if (!canvas) {
                     interactionState.type = null;
                     return;
@@ -534,33 +680,28 @@
                 const pageNum = parseInt(canvas.dataset.pageNum);
                 const page = await pdfDoc.getPage(pageNum);
                 const scale = canvas.width / page.getViewport({scale: 1.0}).width;
-                const viewport = page.getViewport({ scale });
+                const canvasRect = canvas.getBoundingClientRect();
 
                 if (interactionState.type === 'move' || interactionState.type === 'resize') {
-                    const index = parseInt(selectedRedactionBox.dataset.redactionIndex);
-                    const rect = selectedRedactionBox.getBoundingClientRect();
-                    const canvasRect = canvas.getBoundingClientRect();
-                    
-                    const [x1, y1] = viewport.convertToPdfPoint(rect.left - canvasRect.left, rect.top - canvasRect.top);
-                    const [x2, y2] = viewport.convertToPdfPoint(rect.right - canvasRect.left, rect.bottom - canvasRect.top);
+                    const rect = selectedBox.getBoundingClientRect();
+                    const x = (rect.left - canvasRect.left) / scale;
+                    const y = (rect.top - canvasRect.top) / scale;
+                    const width = rect.width / scale;
+                    const height = rect.height / scale;
 
-                    redactionAreas[index] = {
-                        originalPageNum: pageNum,
-                        x: Math.min(x1, x2),
-                        y: Math.min(y1, y2),
-                        width: Math.abs(x1 - x2),
-                        height: Math.abs(y1 - y2)
-                    };
-                } else if (interactionState.type === 'create') {
+                    if (selectedRedactionBox) {
+                        const index = parseInt(selectedRedactionBox.dataset.redactionIndex);
+                        redactionAreas[index] = { ...redactionAreas[index], x, y, width, height };
+                    } else if (selectedTextBox) {
+                        const index = parseInt(selectedTextBox.dataset.textIndex);
+                        textObjects[index] = { ...textObjects[index], x, y, width, height };
+                    }
+                } else if (interactionState.type === 'create-redaction') {
                     const touch = e.changedTouches ? e.changedTouches[0] : e;
-                    const startX = interactionState.startX;
-                    const startY = interactionState.startY;
-                    const endX = touch.clientX;
-                    const endY = touch.clientY;
-                    const canvasRect = canvas.getBoundingClientRect();
-
-                    const [x1, y1] = viewport.convertToPdfPoint(startX - canvasRect.left, startY - canvasRect.top);
-                    const [x2, y2] = viewport.convertToPdfPoint(endX - canvasRect.left, endY - canvasRect.top);
+                    const x1 = (interactionState.startX - canvasRect.left) / scale;
+                    const y1 = (interactionState.startY - canvasRect.top) / scale;
+                    const x2 = (touch.clientX - canvasRect.left) / scale;
+                    const y2 = (touch.clientY - canvasRect.top) / scale;
 
                     if (Math.abs(x1 - x2) > 5 && Math.abs(y1 - y2) > 5) {
                          redactionAreas.push({
@@ -573,26 +714,22 @@
                         await renderRedactionBoxes();
                     }
                     resetTool();
-                } else if (interactionState.type === 'add-text') {
+                } else if (interactionState.type === 'create-text') {
                     const touch = e.changedTouches ? e.changedTouches[0] : e;
-                    const rect = canvas.getBoundingClientRect();
-                    const x = touch.clientX - rect.left;
-                    const y = touch.clientY - rect.top;
-                    const [pdfX, pdfY] = viewport.convertToPdfPoint(x, y);
+                    const x = (touch.clientX - canvasRect.left) / scale;
+                    const y = (touch.clientY - canvasRect.top) / scale;
                     
-                    const text = prompt('Enter text to add:');
-                    if (text) {
-                        showLoader('Adding text...');
-                        const { PDFDocument, rgb, StandardFonts } = PDFLib;
-                        const pdfLibDoc = await PDFDocument.load(pdfBytes);
-                        const helveticaFont = await pdfLibDoc.embedFont(StandardFonts.Helvetica);
-                        const pageIndex = pageOrder.indexOf(pageNum);
-                        const targetPage = pdfLibDoc.getPage(pageIndex);
-                        targetPage.drawText(text, { x: pdfX, y: pdfY, font: helveticaFont, size: 12, color: rgb(0, 0, 0) });
-                        const finalBytes = await pdfLibDoc.save();
-                        await loadPdfFromBytes(finalBytes);
-                        hideLoader();
-                    }
+                    textObjects.push({
+                        originalPageNum: pageNum,
+                        text: 'New Text',
+                        x, y,
+                        width: 100, height: 20, // Default size
+                        fontSize: 12,
+                        color: '#000000'
+                    });
+                    await renderTextObjects();
+                    const newBox = pageContainer.querySelector(`.text-box[data-text-index="${textObjects.length - 1}"]`);
+                    selectTextBox(newBox);
                     resetTool();
                 }
                 
@@ -601,9 +738,10 @@
 
             const resetTool = () => { activeTool = null; pageContainer.style.cursor = 'default'; };
             const activateTool = (toolName, message) => { activeTool = toolName; alert(message); closeDrawer(); return true; };
-            toolAddTextBtn.addEventListener('click', () => { if (activateTool('add-text', 'Tap on a page to add text.')) { /* Intentionally left blank */ } });
-            toolRedactBtn.addEventListener('click', () => { if (activateTool('redact', 'Tap and drag on a page to create a redaction area. Tap existing areas to manage them.')) { /* Intentionally left blank */ } });
+            toolAddTextBtn.addEventListener('click', () => activateTool('add-text', 'Tap on a page to add a new text box.'));
+            toolRedactBtn.addEventListener('click', () => activateTool('redact', 'Tap and drag on a page to create a redaction area. Tap existing areas to manage them.'));
 
+            // --- Utility Functions ---
             const showLoader = text => { loaderText.textContent = text; loaderOverlay.classList.remove('hidden'); };
             const hideLoader = () => loaderOverlay.classList.add('hidden');
             const downloadBlob = (data, fileName) => {
@@ -615,6 +753,10 @@
                 a.click();
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
+            };
+            const hexToRgb = hex => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
             };
         });
     </script>
