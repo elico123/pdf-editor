@@ -52,7 +52,6 @@
             font-family: inherit;
             line-height: 1.2;
             color: black;
-            /* Key styles for auto-sizing */
             white-space: pre;
             overflow: hidden;
         }
@@ -363,14 +362,27 @@
                     const page = finalDoc.getPage(pageIndex);
                     const { height } = page.getSize();
                     const color = hexToRgb(textObj.color);
-                    page.drawText(textObj.text, {
-                        x: textObj.x,
-                        y: height - textObj.y - textObj.fontSize, // Adjust y-coord from top-left to bottom-left
-                        font: helveticaFont,
-                        size: textObj.fontSize,
-                        color: rgb(color.r / 255, color.g / 255, color.b / 255),
-                        lineHeight: textObj.fontSize * 1.2,
-                    });
+                    const lines = textObj.text.split('\n');
+                    const lineHeight = textObj.fontSize * 1.2;
+
+                    for(let i = 0; i < lines.length; i++) {
+                        const line = lines[i];
+                        let x = textObj.x;
+                        const y = height - textObj.y - textObj.fontSize - (i * lineHeight);
+
+                        if (textObj.direction === 'rtl') {
+                            const textWidth = helveticaFont.widthOfTextAtSize(line, textObj.fontSize);
+                            x = textObj.x + textObj.width - textWidth;
+                        }
+
+                        page.drawText(line, {
+                            x,
+                            y,
+                            font: helveticaFont,
+                            size: textObj.fontSize,
+                            color: rgb(color.r / 255, color.g / 255, color.b / 255),
+                        });
+                    }
                 }
                 
                 // Reorder pages if necessary
@@ -388,7 +400,6 @@
             };
 
             const performSecureRedaction = async () => {
-                // This will save redactions and text.
                 alert("Secure redaction will flatten text and redactions into the page image.");
                  showLoader('Applying secure redaction...');
                 try {
@@ -410,10 +421,22 @@
                         for (const textObj of pageTextObjects) {
                             context.font = `${textObj.fontSize * RENDER_SCALE}px Helvetica`;
                             context.fillStyle = textObj.color;
-                            // Handle multiline text
                             const lines = textObj.text.split('\n');
+                            
+                            let startX;
+                            if (textObj.direction === 'rtl') {
+                                context.textAlign = 'right';
+                                startX = (textObj.x + textObj.width) * RENDER_SCALE;
+                            } else {
+                                context.textAlign = 'left';
+                                startX = textObj.x * RENDER_SCALE;
+                            }
+
+                            const lineHeight = textObj.fontSize * 1.2 * RENDER_SCALE;
+                            let startY = (textObj.y * RENDER_SCALE) + (textObj.fontSize * RENDER_SCALE);
+
                             for (let i = 0; i < lines.length; i++) {
-                                context.fillText(lines[i], textObj.x * RENDER_SCALE, (textObj.y * RENDER_SCALE) + (i * textObj.fontSize * RENDER_SCALE * 1.2));
+                                context.fillText(lines[i], startX, startY + (i * lineHeight));
                             }
                         }
 
@@ -480,26 +503,35 @@
                 if (isNaN(textIndex) || !textObjects[textIndex]) return;
 
                 const textObj = textObjects[textIndex];
+                const box = textarea.parentElement;
                 const canvas = textarea.closest('.relative')?.querySelector('canvas');
                 if (!canvas) return;
-
+                
                 const page = await pdfDoc.getPage(textObj.originalPageNum);
                 const scale = canvas.width / page.getViewport({ scale: 1.0 }).width;
 
-                // Temporarily apply styles to measure content
+                const oldWidthPx = box.offsetWidth;
+
                 textarea.style.width = 'auto';
                 textarea.style.height = 'auto';
 
                 const newWidthPx = textarea.scrollWidth;
                 const newHeightPx = textarea.scrollHeight;
+                
+                const widthDifference = newWidthPx - oldWidthPx;
 
-                // Apply new size to textarea and its container
+                if (textObj.direction === 'rtl' && widthDifference > 0) {
+                    const currentLeftPx = parseFloat(box.style.left) || 0;
+                    const newLeftPx = currentLeftPx - widthDifference;
+                    box.style.left = `${newLeftPx}px`;
+                    textObj.x = newLeftPx / scale;
+                }
+
                 textarea.style.width = `${newWidthPx}px`;
                 textarea.style.height = `${newHeightPx}px`;
-                textarea.parentElement.style.width = `${newWidthPx}px`;
-                textarea.parentElement.style.height = `${newHeightPx}px`;
+                box.style.width = `${newWidthPx}px`;
+                box.style.height = `${newHeightPx}px`;
 
-                // Update data model with PDF units
                 textObj.width = newWidthPx / scale;
                 textObj.height = newHeightPx / scale;
             }
@@ -525,15 +557,34 @@
                     textarea.style.color = textObj.color;
                     
                     textarea.addEventListener('input', () => {
-                        textObjects[index].text = textarea.value;
+                        const text = textarea.value;
+                        const currentTextObj = textObjects[index];
+                        currentTextObj.text = text;
+
+                        if (hasRtl(text)) {
+                            textarea.dir = 'rtl';
+                            textarea.style.textAlign = 'right';
+                            currentTextObj.direction = 'rtl';
+                        } else {
+                            textarea.dir = 'ltr';
+                            textarea.style.textAlign = 'left';
+                            currentTextObj.direction = 'ltr';
+                        }
                         autoSizeTextBox(textarea);
                     });
                     
+                    if (textObj.direction === 'rtl') {
+                        textarea.dir = 'rtl';
+                        textarea.style.textAlign = 'right';
+                    } else {
+                        textarea.dir = 'ltr';
+                        textarea.style.textAlign = 'left';
+                    }
+
                     box.appendChild(textarea);
                     pageDiv.appendChild(box);
                     
-                    // Set initial size after rendering
-                    await Promise.resolve(); // Wait for element to be in DOM
+                    await Promise.resolve();
                     autoSizeTextBox(textarea);
                 }
             };
@@ -543,7 +594,7 @@
                     selectedRedactionBox.classList.remove('selected', 'resize-mode');
                     Array.from(selectedRedactionBox.children).forEach(child => child.remove());
                 }
-                if (!internalCall) selectTextBox(null, true); // Prevent recursion
+                if (!internalCall) selectTextBox(null, true);
                 
                 if (boxElement) {
                     selectedRedactionBox = boxElement;
@@ -557,7 +608,7 @@
 
             const selectTextBox = (boxElement, internalCall = false) => {
                 if (selectedTextBox) selectedTextBox.classList.remove('selected');
-                if (!internalCall) selectRedactionBox(null, true); // Prevent recursion
+                if (!internalCall) selectRedactionBox(null, true);
 
                 if (boxElement) {
                     selectedTextBox = boxElement;
@@ -767,9 +818,10 @@
                         originalPageNum: pageNum,
                         text: 'New Text',
                         x, y,
-                        width: 50 / scale, height: 14 / scale, // Default size in PDF units
+                        width: 50 / scale, height: 14 / scale,
                         fontSize: 12,
-                        color: '#000000'
+                        color: '#000000',
+                        direction: 'ltr'
                     });
                     await renderTextObjects();
                     const newBox = pageContainer.querySelector(`.text-box[data-text-index="${textObjects.length - 1}"]`);
@@ -786,6 +838,11 @@
             toolRedactBtn.addEventListener('click', () => activateTool('redact', 'Tap and drag on a page to create a redaction area. Tap existing areas to manage them.'));
 
             // --- Utility Functions ---
+            const hasRtl = (s) => {
+                const rtlChars = '\u0590-\u05FF\u0600-\u06FF'; // Hebrew and Arabic character ranges
+                const rtlRegex = new RegExp(`[${rtlChars}]`);
+                return rtlRegex.test(s);
+            };
             const showLoader = text => { loaderText.textContent = text; loaderOverlay.classList.remove('hidden'); };
             const hideLoader = () => loaderOverlay.classList.add('hidden');
             const downloadBlob = (data, fileName) => {
