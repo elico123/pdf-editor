@@ -126,7 +126,8 @@
             <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white p-4 overflow-y-auto border-r border-gray-200 z-40">
                 <h2 class="text-lg font-semibold mb-4">Actions</h2>
                 <div class="space-y-2 mb-6">
-                    <button id="save-pdf-btn" class="w-full text-left bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Save As...</button>
+                    <button id="save-pdf-btn" class="w-full text-left bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Save Editable...</button>
+                    <button id="save-flat-pdf-btn" class="w-full text-left bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Save for Sharing (Flattened)...</button>
                     <button id="print-pdf-btn" class="w-full text-left bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Print</button>
                     <button id="close-pdf-btn" class="w-full text-left bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Close</button>
                 </div>
@@ -214,12 +215,13 @@
         document.addEventListener('DOMContentLoaded', () => {
             pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
             
-                    const { PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString } = PDFLib;
+            const { PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale } = PDFLib;
 
             // --- DOM Element References ---
             const fileInput = document.getElementById('file-input');
             const openPdfBtn = document.getElementById('open-pdf-btn');
-            const savePdfBtn = document.getElementById('save-pdf-btn');
+            const savePdfBtn = document.getElementById('save-pdf-btn'); // Now "Save Editable..."
+            // saveFlatPdfBtn is defined below with other DOM elements
             const printPdfBtn = document.getElementById('print-pdf-btn');
             const closePdfBtn = document.getElementById('close-pdf-btn');
             const menuBtn = document.getElementById('menu-btn');
@@ -245,6 +247,7 @@
             const textFontSizeInput = document.getElementById('text-font-size');
             const textColorInput = document.getElementById('text-color');
             const textToolbarDeleteBtn = document.getElementById('text-toolbar-delete-btn');
+            const saveFlatPdfBtnEl = document.getElementById('save-flat-pdf-btn'); // Get the actual button element
 
             // Debug View Elements
             const debugOverlay = document.getElementById('debug-overlay');
@@ -253,7 +256,7 @@
             const debugCloseBtn = document.getElementById('debug-close-btn');
             const toggleDebugBtn = document.getElementById('toggle-debug-btn');
 
-            const actionButtons = [savePdfBtn, printPdfBtn, closePdfBtn, document.getElementById('tool-merge'), document.getElementById('tool-split'), toolAddTextBtn, toolRedactBtn];
+            const actionButtons = [savePdfBtn, saveFlatPdfBtnEl, printPdfBtn, closePdfBtn, document.getElementById('tool-merge'), document.getElementById('tool-split'), toolAddTextBtn, toolRedactBtn];
 
             // --- Debug Logger ---
             const logDebug = (message, data) => {
@@ -435,11 +438,15 @@
 
             savePdfBtn.addEventListener('click', () => {
                 if (!pdfDoc) return;
-                performStandardSave();
+                performStandardSave(); // This is now "Save Editable..."
             });
 
+            // saveFlatPdfBtn is initialized with other DOM elements later
+            // let saveFlatPdfBtn; // No longer a placeholder, will be defined properly
+
             const performStandardSave = async () => {
-                showLoader('Saving PDF...');
+                showLoader('Saving Editable PDF...');
+                logDebug("performStandardSave: Starting editable save.");
                 try {
                     if (!pdfBytes) {
                         throw new Error("PDF data is not available.");
@@ -539,6 +546,145 @@
                     errorDiv.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
                     errorDiv.style.zIndex = '10000';
                     errorDiv.textContent = `Error saving file: ${error.message}`;
+                    document.body.appendChild(errorDiv);
+                    setTimeout(() => errorDiv.remove(), 5000);
+                } finally {
+                    hideLoader();
+                }
+            };
+
+            const performFlattenedSave = async () => {
+                showLoader('Saving Flattened PDF...');
+                logDebug("performFlattenedSave: Starting flattened save.");
+                try {
+                    if (!pdfBytes) {
+                        throw new Error("PDF data is not available for flattened save.");
+                    }
+
+                    const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+                    const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
+
+                    // Remove existing editor metadata if present, to make it a clean export
+                    const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
+                    if (finalDoc.catalog.has(customDataKey)) {
+                        finalDoc.catalog.delete(customDataKey);
+                        logDebug("performFlattenedSave: Removed existing editor metadata for flattened save.");
+                    }
+
+                    // Apply visible text objects
+                    logDebug("performFlattenedSave: Applying textObjects to PDF content. Count: " + textObjects.length);
+                    for (const textObj of textObjects) {
+                        const pageIndex = pageOrder.indexOf(textObj.originalPageNum);
+                        if (pageIndex === -1) {
+                            logDebug(`Skipping textObj for flattened save, pageIndex not found for originalPageNum: ${textObj.originalPageNum}`);
+                            continue;
+                        }
+
+                        const page = finalDoc.getPage(pageIndex);
+                        const { height: pageHeight } = page.getSize();
+                        const color = hexToRgb(textObj.color);
+
+                        const x = parseFloat(textObj.x);
+                        const y = parseFloat(textObj.y);
+                        const fontSize = parseFloat(textObj.fontSize);
+                        const width = parseFloat(textObj.width);
+                        // const lineHeight = fontSize * 1.2; // pdf-lib handles this with its own default or explicit line height
+
+                        if ([x, y, fontSize, width].some(isNaN) || !color) {
+                            console.error("Invalid text object property for flattening, skipping:", textObj);
+                            logDebug("performFlattenedSave: Invalid text object property, skipping.", textObj);
+                            continue;
+                        }
+                        logDebug(`performFlattenedSave: Drawing text on page ${pageIndex}`, {text: textObj.text, x,y,fontSize,width});
+                        page.drawText(textObj.text, {
+                            x: x,
+                            y: pageHeight - y - fontSize, // Y is baseline of first line
+                            font: helveticaFont,
+                            size: fontSize,
+                            color: rgb(color.r / 255, color.g / 255, color.b / 255),
+                            // lineHeight: lineHeight, // Let pdf-lib use its default or handle wrapping
+                            maxWidth: width,
+                            textAlign: textObj.direction === 'rtl' ? TextAlignment.Right : TextAlignment.Left,
+                        });
+                    }
+
+                    // Apply redaction areas as black boxes (example, could be white)
+                    logDebug("performFlattenedSave: Applying redactionAreas to PDF content. Count: " + redactionAreas.length);
+                    for (const area of redactionAreas) {
+                        const pageIndex = pageOrder.indexOf(area.originalPageNum);
+                         if (pageIndex === -1) {
+                            logDebug(`Skipping redactionArea for flattened save, pageIndex not found for originalPageNum: ${area.originalPageNum}`);
+                            continue;
+                        }
+                        const page = finalDoc.getPage(pageIndex);
+                        const { height: pageHeight } = page.getSize();
+
+                        const x = parseFloat(area.x);
+                        const y = parseFloat(area.y);
+                        const width = parseFloat(area.width);
+                        const height = parseFloat(area.height);
+
+                        if ([x, y, width, height].some(isNaN)) {
+                            console.error("Invalid redaction area property for flattening, skipping:", area);
+                            logDebug("performFlattenedSave: Invalid redaction area property, skipping.", area);
+                            continue;
+                        }
+                        logDebug(`performFlattenedSave: Drawing redaction on page ${pageIndex}`, {x,y,width,height});
+                        page.drawRectangle({
+                            x: x,
+                            y: pageHeight - y - height,
+                            width: width,
+                            height: height,
+                            color: rgb(0, 0, 0), // Black redaction box
+                           // borderColor: rgb(0,0,0), // Optional: if you want a border
+                           // borderWidth: 1,           // Optional: border width
+                        });
+                    }
+
+                    const finalPdfBytes = await finalDoc.save();
+
+                    const originalFileName = (fileInput.files[0]?.name || 'document.pdf').replace(/\.pdf$/i, '');
+                    const suggestedName = `${originalFileName}-shared.pdf`;
+
+                    if (window.showSaveFilePicker) {
+                        try {
+                            const handle = await window.showSaveFilePicker({
+                                suggestedName,
+                                types: [{ description: 'PDF Files', accept: { 'application/pdf': ['.pdf'] } }],
+                            });
+                            const writable = await handle.createWritable();
+                            await writable.write(finalPdfBytes);
+                            await writable.close();
+                            logDebug("performFlattenedSave: File saved via showSaveFilePicker.");
+                        } catch (err) {
+                            if (err.name !== 'AbortError') {
+                                console.error('Error saving flattened PDF with showSaveFilePicker:', err);
+                                logDebug("performFlattenedSave: Error with showSaveFilePicker, falling back.", {error: err.message});
+                                downloadBlob(finalPdfBytes, suggestedName);
+                            } else {
+                                logDebug("performFlattenedSave: Save As dialog cancelled by user.");
+                            }
+                        }
+                    } else {
+                        logDebug("performFlattenedSave: Falling back to downloadBlob for saving.");
+                        downloadBlob(finalPdfBytes, suggestedName);
+                    }
+
+                } catch (error) {
+                    console.error("Failed to save flattened PDF:", error);
+                    logDebug("performFlattenedSave: ERROR during save process", { error: error.message, stack: error.stack });
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.position = 'fixed';
+                    errorDiv.style.bottom = '20px';
+                    errorDiv.style.left = '50%';
+                    errorDiv.style.transform = 'translateX(-50%)';
+                    errorDiv.style.padding = '1rem';
+                    errorDiv.style.backgroundColor = '#ef4444'; // Red-500
+                    errorDiv.style.color = 'white';
+                    errorDiv.style.borderRadius = '0.5rem';
+                    errorDiv.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                    errorDiv.style.zIndex = '10000';
+                    errorDiv.textContent = `Error saving flattened file: ${error.message}`;
                     document.body.appendChild(errorDiv);
                     setTimeout(() => errorDiv.remove(), 5000);
                 } finally {
@@ -1047,6 +1193,11 @@
             };
             toolAddTextBtn.addEventListener('click', () => activateTool('add-text', 'Tap on a page to add a new text box.'));
             toolRedactBtn.addEventListener('click', () => activateTool('redact', 'Tap and drag on a page to create a redaction area. Tap existing areas to manage them.'));
+
+            saveFlatPdfBtnEl.addEventListener('click', () => {
+                if (!pdfDoc) return;
+                performFlattenedSave();
+            });
 
             // --- Utility Functions ---
             const hasRtl = (s) => {
