@@ -1,9 +1,9 @@
 // js/app.ts
-import { EDITOR_METADATA_KEY } from './config'; // Expecting config.ts
-import * as dom from './domElements';       // Expecting domElements.ts
-import * as utils from './utils';           // Expecting utils.ts
-import { logDebug } from './debug';         // Expecting debug.ts
-import * as pdfLibCore from './pdfSetup';   // Expecting pdfSetup.ts
+import { EDITOR_METADATA_KEY } from './config.ts';
+import * as dom from './domElements.ts';
+import * as utils from './utils.ts';
+import { logDebug } from './debug.ts';
+import * as pdfLibCore from './pdfSetup.ts';
 
 // Explicitly type PDFDocumentConstructors from pdf-lib
 // This helps in typing pdfDocInstance correctly later.

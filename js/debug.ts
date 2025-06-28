@@ -5,21 +5,21 @@ import {
     debugClearBtn,
     debugCloseBtn,
     toggleDebugBtn
-} from './domElements.mjs';
+} from './domElements.ts';
 
-export const logDebug = (message, data) => {
+export const logDebug = (message: string, data?: any): void => {
     if (!debugOverlay || debugOverlay.classList.contains('hidden')) return; // Don't process if hidden or elements not found
     if (!debugMessagesContainer) return;
 
-    const timestamp = new Date().toLocaleTimeString();
+    const timestamp: string = new Date().toLocaleTimeString();
     const msgDiv = document.createElement('div');
-    msgDiv.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+    msgDiv.innerHTML = `<strong>[${timestamp}]</strong> ${message}`; // Be cautious with innerHTML if message is user-sourced
     if (data !== undefined) {
         try {
-            const prettyData = JSON.stringify(data, null, 2);
+            const prettyData: string = JSON.stringify(data, null, 2);
             const dataPre = document.createElement('pre');
             dataPre.textContent = prettyData;
-            dataPre.style.marginLeft = '10px';
+            dataPre.style.marginLeft = '10px'; // Consider CSS classes instead of inline styles
             dataPre.style.padding = '2px';
             dataPre.style.backgroundColor = 'rgba(255,255,255,0.1)';
             dataPre.style.borderRadius = '3px';
@@ -36,16 +36,16 @@ export const logDebug = (message, data) => {
 };
 
 // Store original console methods
-const originalConsoleLog = console.log;
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
-const originalConsoleInfo = console.info;
+const originalConsoleLog: (...data: any[]) => void = console.log;
+const originalConsoleError: (...data: any[]) => void = console.error;
+const originalConsoleWarn: (...data: any[]) => void = console.warn;
+const originalConsoleInfo: (...data: any[]) => void = console.info;
 
 // Override console methods
-console.log = (...args) => { logDebug(args.map(a => String(a)).join(' '), args.length > 1 ? args.slice(1) : undefined); originalConsoleLog.apply(console, args); };
-console.error = (...args) => { logDebug(`ERROR: ${args.map(a => String(a)).join(' ')}`, args.length > 1 ? args.slice(1) : undefined); originalConsoleError.apply(console, args); };
-console.warn = (...args) => { logDebug(`WARN: ${args.map(a => String(a)).join(' ')}`, args.length > 1 ? args.slice(1) : undefined); originalConsoleWarn.apply(console, args); };
-console.info = (...args) => { logDebug(`INFO: ${args.map(a => String(a)).join(' ')}`, args.length > 1 ? args.slice(1) : undefined); originalConsoleInfo.apply(console, args); };
+console.log = (...args: any[]): void => { logDebug(args.map(a => String(a)).join(' '), args.length > 1 ? args.slice(1) : undefined); originalConsoleLog.apply(console, args); };
+console.error = (...args: any[]): void => { logDebug(`ERROR: ${args.map(a => String(a)).join(' ')}`, args.length > 1 ? args.slice(1) : undefined); originalConsoleError.apply(console, args); };
+console.warn = (...args: any[]): void => { logDebug(`WARN: ${args.map(a => String(a)).join(' ')}`, args.length > 1 ? args.slice(1) : undefined); originalConsoleWarn.apply(console, args); };
+console.info = (...args: any[]): void => { logDebug(`INFO: ${args.map(a => String(a)).join(' ')}`, args.length > 1 ? args.slice(1) : undefined); originalConsoleInfo.apply(console, args); };
 
 // Event Listeners for debug controls
 if (debugClearBtn) {
