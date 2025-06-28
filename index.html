@@ -139,6 +139,8 @@
                     <button id="tool-redact" class="w-full text-left bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">Redact</button>
                 </div>
                 <hr class="my-4">
+                <button id="toggle-debug-btn" class="w-full text-left bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition mb-4">Toggle Debug View</button>
+                <hr class="my-4">
                 <h3 class="text-md font-semibold mb-2">Pages (Drag to Sort)</h3>
                 <div id="thumbnails-container" class="space-y-2"></div>
             </aside>
@@ -187,6 +189,18 @@
         <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32"></div>
         <p id="loader-text" class="text-white text-lg ml-4">Loading...</p>
     </div>
+
+    <!-- Debug Overlay -->
+    <div id="debug-overlay" class="fixed bottom-0 left-0 right-0 h-1/3 bg-gray-900 bg-opacity-90 text-white p-2 text-xs z-[10000] hidden overflow-y-auto">
+        <div class="flex justify-between items-center mb-1">
+            <h4 class="font-semibold">Debug Log</h4>
+            <div>
+                <button id="debug-clear-btn" class="bg-gray-700 hover:bg-gray-600 text-white py-0.5 px-2 rounded text-xs mr-1">Clear</button>
+                <button id="debug-close-btn" class="bg-red-700 hover:bg-red-600 text-white py-0.5 px-2 rounded text-xs">&times; Close</button>
+            </div>
+        </div>
+        <div id="debug-messages" class="whitespace-pre-wrap break-all"></div>
+    </div>
     
     <script>
         if ('serviceWorker' in navigator) {
@@ -232,7 +246,61 @@
             const textColorInput = document.getElementById('text-color');
             const textToolbarDeleteBtn = document.getElementById('text-toolbar-delete-btn');
 
+            // Debug View Elements
+            const debugOverlay = document.getElementById('debug-overlay');
+            const debugMessagesContainer = document.getElementById('debug-messages');
+            const debugClearBtn = document.getElementById('debug-clear-btn');
+            const debugCloseBtn = document.getElementById('debug-close-btn');
+            const toggleDebugBtn = document.getElementById('toggle-debug-btn');
+
             const actionButtons = [savePdfBtn, printPdfBtn, closePdfBtn, document.getElementById('tool-merge'), document.getElementById('tool-split'), toolAddTextBtn, toolRedactBtn];
+
+            // --- Debug Logger ---
+            const logDebug = (message, data) => {
+                if (debugOverlay.classList.contains('hidden')) return; // Don't process if hidden
+                const timestamp = new Date().toLocaleTimeString();
+                const msgDiv = document.createElement('div');
+                msgDiv.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+                if (data !== undefined) {
+                    try {
+                        const prettyData = JSON.stringify(data, null, 2);
+                        const dataPre = document.createElement('pre');
+                        dataPre.textContent = prettyData;
+                        dataPre.style.marginLeft = '10px';
+                        dataPre.style.padding = '2px';
+                        dataPre.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                        dataPre.style.borderRadius = '3px';
+                        msgDiv.appendChild(dataPre);
+                    } catch (e) {
+                        const dataDiv = document.createElement('div');
+                        dataDiv.textContent = `[Unserializable data: ${e.message}]`;
+                        dataDiv.style.marginLeft = '10px';
+                        msgDiv.appendChild(dataDiv);
+                    }
+                }
+                debugMessagesContainer.appendChild(msgDiv);
+                debugMessagesContainer.scrollTop = debugMessagesContainer.scrollHeight; // Auto-scroll
+            };
+
+            const originalConsoleLog = console.log;
+            const originalConsoleError = console.error;
+            const originalConsoleWarn = console.warn;
+            const originalConsoleInfo = console.info;
+
+            console.log = (...args) => { logDebug(args.map(a => String(a)).join(' '), args.length > 1 ? args.slice(1) : undefined); originalConsoleLog.apply(console, args); };
+            console.error = (...args) => { logDebug(`ERROR: ${args.map(a => String(a)).join(' ')}`, args.length > 1 ? args.slice(1) : undefined); originalConsoleError.apply(console, args); };
+            console.warn = (...args) => { logDebug(`WARN: ${args.map(a => String(a)).join(' ')}`, args.length > 1 ? args.slice(1) : undefined); originalConsoleWarn.apply(console, args); };
+            console.info = (...args) => { logDebug(`INFO: ${args.map(a => String(a)).join(' ')}`, args.length > 1 ? args.slice(1) : undefined); originalConsoleInfo.apply(console, args); };
+
+            debugClearBtn.addEventListener('click', () => debugMessagesContainer.innerHTML = '');
+            debugCloseBtn.addEventListener('click', () => debugOverlay.classList.add('hidden'));
+            toggleDebugBtn.addEventListener('click', () => {
+                debugOverlay.classList.toggle('hidden');
+                if (!debugOverlay.classList.contains('hidden')) {
+                    logDebug("Debug view opened.");
+                }
+            });
+
 
             // --- State Variables ---
             let pdfDoc = null, pdfBytes = null, pageOrder = [], activeTool = null;
@@ -282,17 +350,27 @@
 
                  // Load edits from metadata
                  try {
+                    logDebug("Attempting to load attachments from PDF metadata.");
                     const attachments = await pdfDocInstance.getAttachments();
                     const editorDataAttachment = attachments.find(a => a.name === METADATA_KEY);
 
                     if (editorDataAttachment && editorDataAttachment.data) {
+                        logDebug("Found editor data attachment.", { name: editorDataAttachment.name, size: editorDataAttachment.data.byteLength });
                         const customData = new TextDecoder().decode(editorDataAttachment.data);
                         const savedData = JSON.parse(customData);
+                        logDebug("Parsed editor data:", savedData);
                         textObjects = savedData.textObjects || [];
                         redactionAreas = savedData.redactionAreas || [];
+                        logDebug("Loaded textObjects count: " + textObjects.length);
+                        logDebug("Loaded redactionAreas count: " + redactionAreas.length);
+                    } else {
+                        logDebug("No editor data attachment found or data is empty.");
+                        textObjects = [];
+                        redactionAreas = [];
                     }
                  } catch (e) {
-                     console.log("No attachments found or failed to parse:", e);
+                     console.error("Failed to load or parse PDF attachments:", e);
+                     logDebug("Error loading attachments. Resetting textObjects and redactionAreas.", { error: e.message });
                      textObjects = [];
                      redactionAreas = [];
                  }
@@ -438,7 +516,8 @@
                     }
 
                 } catch (error) {
-                    console.error("Failed to save PDF:", error);
+                    console.error("Failed to save PDF:", error); // This will also go to logDebug
+                    logDebug("performStandardSave: ERROR during save process", { error: error.message, stack: error.stack });
                     const errorDiv = document.createElement('div');
                     errorDiv.style.position = 'fixed';
                     errorDiv.style.bottom = '20px';
@@ -521,13 +600,23 @@
             }
 
             const renderTextObjects = async () => {
+                logDebug("Starting renderTextObjects. Current textObjects count: " + textObjects.length, textObjects);
                 document.querySelectorAll('.text-box').forEach(box => box.remove());
                 for (const [index, textObj] of textObjects.entries()) {
+                    logDebug(`Rendering textObj at index ${index}`, textObj);
                     const pageDiv = pageContainer.querySelector(`canvas[data-page-num="${textObj.originalPageNum}"]`)?.parentElement;
-                    if (!pageDiv) continue;
+                    if (!pageDiv) {
+                        logDebug(`Skipping textObj ${index}: Page div not found for pageNum ${textObj.originalPageNum}`);
+                        continue;
+                    }
                     const canvas = pageDiv.querySelector('canvas');
+                    if (!canvas) { // Should not happen if pageDiv is found, but good check
+                        logDebug(`Skipping textObj ${index}: Canvas not found in pageDiv for pageNum ${textObj.originalPageNum}`);
+                        continue;
+                    }
                     const page = await pdfDoc.getPage(textObj.originalPageNum);
                     const scale = canvas.width / page.getViewport({scale: 1.0}).width;
+                    logDebug(`TextObj ${index}: Scale calculated as ${scale}`);
                     
                     const box = document.createElement('div');
                     box.className = 'text-box';
@@ -603,16 +692,24 @@
                 if (boxElement) {
                     selectedTextBox = boxElement;
                     selectedTextBox.classList.add('selected');
+                    logDebug("selectTextBox: Box selected", { className: boxElement.className, dataset: boxElement.dataset });
 
                     const textObjIndex = parseInt(boxElement.dataset.textIndex);
                     const textObj = textObjects[textObjIndex];
+                    logDebug(`selectTextBox: Attempting to get textObj at index ${textObjIndex}`, { retrievedObj: textObj });
 
                     if (textObj) {
+                        logDebug("selectTextBox: textObj found. Current properties:", JSON.parse(JSON.stringify(textObj)));
                         // Ensure properties exist, provide defaults if not
-                        textObj.fontSize = textObj.fontSize || DEFAULT_FONT_SIZE;
-                        textObj.color = textObj.color || DEFAULT_TEXT_COLOR;
-                        textObj.text = textObj.text || ''; // Should always exist but good practice
-                        textObj.autoSize = typeof textObj.autoSize === 'boolean' ? textObj.autoSize : true;
+                        let defaulted = false;
+                        if (!textObj.hasOwnProperty('fontSize') || typeof textObj.fontSize !== 'number') { textObj.fontSize = 12; defaulted = true; logDebug("Defaulted fontSize"); }
+                        if (!textObj.hasOwnProperty('color') || typeof textObj.color !== 'string') { textObj.color = '#000000'; defaulted = true; logDebug("Defaulted color"); }
+                        if (!textObj.hasOwnProperty('text') || typeof textObj.text !== 'string') { textObj.text = ''; defaulted = true; logDebug("Defaulted text"); }
+                        if (!textObj.hasOwnProperty('autoSize') || typeof textObj.autoSize !== 'boolean') { textObj.autoSize = true; defaulted = true; logDebug("Defaulted autoSize"); }
+
+                        if(defaulted) {
+                            logDebug("selectTextBox: textObj after defaulting:", JSON.parse(JSON.stringify(textObj)));
+                        }
 
                         textFontSizeInput.value = textObj.fontSize;
                         textColorInput.value = textObj.color;
@@ -740,20 +837,29 @@
             async function handleInteractionStart(e) {
                 const touch = e.changedTouches ? e.changedTouches[0] : e;
                 const target = e.target;
+                logDebug("handleInteractionStart: Fired", { target: target.tagName + (target.className ? '.' + target.className : ''), clientX: touch.clientX, clientY: touch.clientY });
 
-                if (target.closest('.resize-handle')) {
+                const closestResizeHandle = target.closest('.resize-handle');
+                const closestRedactionBox = target.closest('.redaction-box');
+                const closestTextBox = target.closest('.text-box');
+
+                if (closestResizeHandle) {
                     e.stopPropagation();
                     interactionState.type = 'resize';
-                    interactionState.handle = target.closest('.resize-handle').classList[1];
-                } else if (target.closest('.redaction-box')) {
+                    interactionState.handle = closestResizeHandle.classList[1];
+                    logDebug("Interaction type: resize", { handle: interactionState.handle });
+                } else if (closestRedactionBox) {
                     e.stopPropagation();
                     interactionState.type = 'move';
-                    selectRedactionBox(target.closest('.redaction-box'));
-                } else if (target.closest('.text-box')) {
+                    logDebug("Interaction type: move (redaction box)");
+                    selectRedactionBox(closestRedactionBox);
+                } else if (closestTextBox) {
                     e.stopPropagation();
                     interactionState.type = 'move';
-                    selectTextBox(target.closest('.text-box'));
+                    logDebug("Interaction type: move (text box)");
+                    selectTextBox(closestTextBox);
                 } else if (target.matches('canvas')) {
+                    logDebug("Interaction target: canvas", { activeTool });
                     if (activeTool === 'redact') {
                         interactionState.type = 'create-redaction';
                         selectRedactionBox(null);
@@ -762,11 +868,12 @@
                         selectTextBox(null);
                     } else {
                         interactionState.type = null;
-                        selectRedactionBox(null);
+                        selectRedactionBox(null); // Deselect any active elements if canvas is clicked directly
                         selectTextBox(null);
                     }
                 } else {
-                    if (!target.closest('#redaction-toolbar') && !target.closest('#text-toolbar')) {
+                    logDebug("Interaction: No specific target, potentially deselecting.");
+                    if (!target.closest('#redaction-toolbar') && !target.closest('#text-toolbar') && !target.closest('#debug-overlay')) {
                        selectRedactionBox(null);
                        selectTextBox(null);
                     }
@@ -782,17 +889,25 @@
                     interactionState.startTop = selectedBox.offsetTop;
                     interactionState.startWidth = selectedBox.offsetWidth;
                     interactionState.startHeight = selectedBox.offsetHeight;
+                    logDebug("Interaction state initialized for selected box", { type: interactionState.type, startX: interactionState.startX, startY: interactionState.startY, startW: interactionState.startWidth, startH: interactionState.startHeight });
+                } else if (interactionState.type && interactionState.type.startsWith('create')) {
+                    logDebug("Interaction state initialized for create operation", { type: interactionState.type, startX: interactionState.startX, startY: interactionState.startY });
                 }
             }
 
             async function handleInteractionMove(e) {
                 if (!interactionState.type || interactionState.type.startsWith('create')) return;
+                // Avoid logging too frequently for move/resize, only if debugging specific move issues
+                // logDebug("handleInteractionMove", { type: interactionState.type });
                 e.preventDefault();
                 const touch = e.changedTouches ? e.changedTouches[0] : e;
                 const dx = touch.clientX - interactionState.startX;
                 const dy = touch.clientY - interactionState.startY;
                 const selectedBox = selectedRedactionBox || selectedTextBox;
-                if (!selectedBox) return;
+                if (!selectedBox) {
+                    // logDebug("handleInteractionMove: No selected box, exiting.");
+                    return;
+                }
 
                 if (interactionState.type === 'move') {
                     selectedBox.style.left = `${interactionState.startLeft + dx}px`;
@@ -817,15 +932,20 @@
             
             async function handleInteractionEnd(e) {
                 if (!interactionState.type) return;
+                logDebug("handleInteractionEnd: Fired", { type: interactionState.type });
                 
                 const selectedBox = selectedRedactionBox || selectedTextBox;
-                const canvas = selectedBox ? selectedBox.closest('.relative').querySelector('canvas') : e.target.closest('canvas');
+                const eventTargetCanvas = e.target.closest('canvas');
+                const canvas = selectedBox ? selectedBox.closest('.relative')?.querySelector('canvas') : eventTargetCanvas;
+
                 if (!canvas) {
+                    logDebug("handleInteractionEnd: No canvas found (either from selectedBox or event target). Aborting.", {selectedBoxExists: !!selectedBox, eventTarget: e.target.tagName});
                     interactionState.type = null;
                     return;
                 }
                 
                 const pageNum = parseInt(canvas.dataset.pageNum);
+                logDebug("handleInteractionEnd: Operating on canvas for pageNum: " + pageNum);
                 const page = await pdfDoc.getPage(pageNum);
                 const scale = canvas.width / page.getViewport({scale: 1.0}).width;
                 const canvasRect = canvas.getBoundingClientRect();
@@ -843,12 +963,15 @@
                     if (selectedRedactionBox) {
                         const index = parseInt(selectedRedactionBox.dataset.redactionIndex);
                         redactionAreas[index] = { ...redactionAreas[index], x, y, width, height };
+                        logDebug("handleInteractionEnd: Updated redactionArea", { index, newRect: redactionAreas[index] });
                     } else if (selectedTextBox) {
                         const index = parseInt(selectedTextBox.dataset.textIndex);
                         textObjects[index] = { ...textObjects[index], x, y, width, height };
+                        logDebug("handleInteractionEnd: Updated textObject", { index, newRect: textObjects[index] });
                     }
                 } else if (interactionState.type === 'create-redaction') {
                     const touch = e.changedTouches ? e.changedTouches[0] : e;
+                    logDebug("handleInteractionEnd: Creating redaction", {startX: interactionState.startX, currentX: touch.clientX, canvasLeft: canvasRect.left, scale});
                     const x1 = (interactionState.startX - canvasRect.left) / scale;
                     const y1 = (interactionState.startY - canvasRect.top) / scale;
                     const x2 = (touch.clientX - canvasRect.left) / scale;
@@ -862,6 +985,7 @@
                             width: Math.abs(x1 - x2),
                             height: Math.abs(y1 - y2)
                         });
+                        logDebug("handleInteractionEnd: New redactionArea pushed", { newArea: redactionAreas[redactionAreas.length-1] });
                         await renderRedactionBoxes();
                     }
                     resetTool();
@@ -869,29 +993,49 @@
                     const touch = e.changedTouches ? e.changedTouches[0] : e;
                     const x = (touch.clientX - canvasRect.left) / scale;
                     const y = (touch.clientY - canvasRect.top) / scale;
+                    logDebug("handleInteractionEnd: Creating text", { x, y, scale });
                     
-                    textObjects.push({
+                    const newTextObj = {
                         id: crypto.randomUUID(),
                         originalPageNum: pageNum,
                         text: 'New Text',
                         x, y,
-                        width: 100 / scale, height: 20 / scale,
+                        width: 100 / scale,
+                        height: 20 / scale, // Initial approximate height
                         fontSize: 12,
                         color: '#000000',
                         direction: 'ltr',
                         autoSize: true,
-                    });
+                    };
+                    textObjects.push(newTextObj);
+                    logDebug("handleInteractionEnd: New textObject pushed", { newTextObj });
                     await renderTextObjects();
                     const newBox = pageContainer.querySelector(`.text-box[data-text-index="${textObjects.length - 1}"]`);
-                    selectTextBox(newBox);
+                    if (newBox) {
+                        logDebug("handleInteractionEnd: Selecting newly created text box.");
+                        selectTextBox(newBox);
+                    } else {
+                        logDebug("handleInteractionEnd: ERROR - Newly created text box not found in DOM for selection.");
+                    }
                     resetTool();
                 }
                 
+                logDebug("handleInteractionEnd: Resetting interactionState.type to null");
                 interactionState.type = null;
             }
 
-            const resetTool = () => { activeTool = null; pageContainer.style.cursor = 'default'; };
-            const activateTool = (toolName, message) => { activeTool = toolName; alert(message); closeDrawer(); return true; };
+            const resetTool = () => {
+                logDebug("resetTool: Resetting activeTool: " + activeTool);
+                activeTool = null;
+                pageContainer.style.cursor = 'default';
+            };
+            const activateTool = (toolName, message) => {
+                activeTool = toolName;
+                logDebug("activateTool: Activated " + toolName);
+                alert(message); // Alert is fine for now, can be replaced with a less obtrusive UI notification later
+                closeDrawer();
+                return true;
+            };
             toolAddTextBtn.addEventListener('click', () => activateTool('add-text', 'Tap on a page to add a new text box.'));
             toolRedactBtn.addEventListener('click', () => activateTool('redact', 'Tap and drag on a page to create a redaction area. Tap existing areas to manage them.'));
 
