@@ -13,3 +13,4 @@ This project is a web-based PDF editor application.
 *   Maintain the client-side processing model for all PDF operations.
 *   When adding new features, ensure they are responsive and work well across different screen sizes, prioritizing mobile usability.
 *   If any changes could potentially impact user privacy or data handling, they must be carefully reviewed to ensure they align with the privacy-focused nature of this application.
+*   When adding comments, don't forget those go to production. Keep only necessary comments for long-term.
