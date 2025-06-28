@@ -206,11 +206,12 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js').catch(err => console.log('SW reg failed: ', err));
+                // Use a relative path for service worker registration
+                navigator.serviceWorker.register('service-worker.js').catch(err => console.log('SW reg failed: ', err));
             });
         }
     </script>
     
-    <script type="module" src="./dist/js/app.js"></script> <!-- Updated path for compiled TS -->
+    <script type="module" src="./dist/app.js"></script> <!-- Updated path for compiled TS -->
 </body>
 </html>
