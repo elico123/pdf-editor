@@ -1,6 +1,6 @@
-// tests/utils.test.js
+// tests/utils.test.mjs
 
-import { hexToRgb } from '../js/utils.js';
+import { hexToRgb, hasRtl, showLoader, hideLoader, downloadBlob } from '../js/utils.mjs';
 
 describe('Utility Functions', () => {
     describe('hexToRgb', () => {
@@ -133,9 +133,12 @@ describe('Utility Functions', () => {
                 // Let's test by calling a hypothetical version of showLoader that takes elements.
                 // This means we can't directly test the exported showLoader as-is without module mocks.
                 // Alternative: We test the side effects assuming the global document.getElementById is hit by utils.
-                const { showLoader } = require('../js/utils.js'); // Re-require to get fresh version with mocks
+                // For ESM, require() is not available. We need to use dynamic import() or ensure mocks are effective for static imports.
+                // Given Jest's ESM support can be tricky with module-level mocks without specific config,
+                // this re-require pattern changes. We'll assume the top-level import is affected by spies for now.
+                // const { showLoader } = await import('../js/utils.mjs'); // Dynamic import if needed
 
-                showLoader('Loading...');
+                showLoader('Loading...'); // Uses the statically imported showLoader
                 expect(mockLoaderOverlay.classList.remove).toHaveBeenCalledWith('hidden');
                 expect(mockLoaderText.textContent).toBe('Loading...');
             });
@@ -143,15 +146,15 @@ describe('Utility Functions', () => {
 
         describe('hideLoader', () => {
             test('should hide loader', () => {
-                const { hideLoader } = require('../js/utils.js'); // Re-require
-                hideLoader();
+                // const { hideLoader } = await import('../js/utils.mjs'); // if using dynamic import
+                hideLoader(); // Uses the statically imported hideLoader
                 expect(mockLoaderOverlay.classList.add).toHaveBeenCalledWith('hidden');
             });
         });
 
         describe('downloadBlob', () => {
             test('should trigger download of a blob', () => {
-                const { downloadBlob } = require('../js/utils.js'); // Re-require
+                // const { downloadBlob } = await import('../js/utils.mjs'); // if using dynamic import
                 const fakeData = new Uint8Array([1, 2, 3]);
                 const fileName = 'test.pdf';
 

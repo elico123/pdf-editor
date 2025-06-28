@@ -1,9 +1,9 @@
-// js/app.js
-import { EDITOR_METADATA_KEY } from './config.js';
-import * as dom from './domElements.js';
-import * as utils from './utils.js';
-import { logDebug } from './debug.js'; // Assuming logDebug is the main export needed
-import * as pdfLibCore from './pdfSetup.js';
+// js/app.mjs
+import { EDITOR_METADATA_KEY } from './config.mjs';
+import * as dom from './domElements.mjs';
+import * as utils from './utils.mjs';
+import { logDebug } from './debug.mjs'; // Assuming logDebug is the main export needed
+import * as pdfLibCore from './pdfSetup.mjs';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Re-alias pdfLibCore objects for convenience if needed, or use pdfLibCore.PDFDocument etc.
