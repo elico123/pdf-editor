@@ -348,29 +348,27 @@
                  const pdfDocInstance = await PDFDocument.load(bytes, { ignoreEncryption: true });
                  pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
 
-                 // Load edits from metadata
+                 // Load edits from Producer metadata field
                  try {
-                    logDebug("Attempting to load attachments from PDF metadata.");
-                    const attachments = await pdfDocInstance.getAttachments();
-                    const editorDataAttachment = attachments.find(a => a.name === METADATA_KEY);
-
-                    if (editorDataAttachment && editorDataAttachment.data) {
-                        logDebug("Found editor data attachment.", { name: editorDataAttachment.name, size: editorDataAttachment.data.byteLength });
-                        const customData = new TextDecoder().decode(editorDataAttachment.data);
-                        const savedData = JSON.parse(customData);
-                        logDebug("Parsed editor data:", savedData);
+                    logDebug("Attempting to load editor data from Producer metadata field.");
+                    const producerString = pdfDocInstance.getProducer();
+                    if (producerString && producerString.startsWith('PDFEDITOR_DATA::')) {
+                        logDebug("Found editor data prefix in Producer field.", { producerStringLength: producerString.length });
+                        const jsonData = producerString.substring('PDFEDITOR_DATA::'.length);
+                        const savedData = JSON.parse(jsonData);
+                        logDebug("Parsed editor data from Producer field:", savedData);
                         textObjects = savedData.textObjects || [];
                         redactionAreas = savedData.redactionAreas || [];
                         logDebug("Loaded textObjects count: " + textObjects.length);
                         logDebug("Loaded redactionAreas count: " + redactionAreas.length);
                     } else {
-                        logDebug("No editor data attachment found or data is empty.");
+                        logDebug("No editor data found in Producer field or prefix mismatch.", { producerString: producerString ? producerString.substring(0, 50) + "..." : "undefined" });
                         textObjects = [];
                         redactionAreas = [];
                     }
                  } catch (e) {
-                     console.error("Failed to load or parse PDF attachments:", e);
-                     logDebug("Error loading attachments. Resetting textObjects and redactionAreas.", { error: e.message });
+                     console.error("Failed to load or parse editor data from Producer field:", e);
+                     logDebug("Error loading from Producer field. Resetting textObjects and redactionAreas.", { error: e.message, stack: e.stack });
                      textObjects = [];
                      redactionAreas = [];
                  }
@@ -443,13 +441,11 @@
                     const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
                     const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
 
-                    // Save editable data as an attachment
+                    // Save editable data in Producer metadata field
                     const dataToStore = JSON.stringify({ textObjects, redactionAreas });
-                    const customDataBytes = new TextEncoder().encode(dataToStore);
-                    await finalDoc.attach(customDataBytes, METADATA_KEY, {
-                        mimeType: 'application/json',
-                        description: 'Editable data for PDF Editor',
-                    });
+                    const prefixedDataString = `PDFEDITOR_DATA::${dataToStore}`;
+                    finalDoc.setProducer(prefixedDataString);
+                    logDebug("performStandardSave: Set Producer field with editor data.", { producerDataLength: prefixedDataString.length });
 
                     // Apply visible text objects for viewing in other readers
                     for (const textObj of textObjects) {
