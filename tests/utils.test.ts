@@ -56,7 +56,7 @@ describe('Utility Functions', () => {
         let hexToRgb: UtilsModule['hexToRgb'];
 
         beforeAll(async () => {
-            const utils = await import('../js/utils.ts') as unknown as UtilsModule;
+            const utils = await import('../js/utils') as unknown as UtilsModule;
             hexToRgb = utils.hexToRgb;
         });
 
@@ -91,7 +91,7 @@ describe('Utility Functions', () => {
         let hasRtl: UtilsModule['hasRtl'];
 
         beforeAll(async () => {
-            const utils = await import('../js/utils.ts') as unknown as UtilsModule;
+            const utils = await import('../js/utils') as unknown as UtilsModule;
             hasRtl = utils.hasRtl;
         });
 
@@ -144,7 +144,7 @@ describe('Utility Functions', () => {
 
         beforeAll(async () => {
             // Dynamically import the DOM-interacting functions
-            const utils = await import('../js/utils.ts') as unknown as UtilsModule;
+            const utils = await import('../js/utils') as unknown as UtilsModule;
             showLoader = utils.showLoader;
             hideLoader = utils.hideLoader;
             downloadBlob = utils.downloadBlob;
