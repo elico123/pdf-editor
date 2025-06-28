@@ -8,6 +8,7 @@ declare global {
     interface Window {
         pdfjsLib?: any; // Replace 'any' with actual pdfjsLib types if available
         PDFLib?: any;   // Replace 'any' with actual PDFLib types if available
+        showSaveFilePicker?: (options?: any) => Promise<any>; // File System Access API
     }
 }
 
