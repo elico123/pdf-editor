@@ -603,11 +603,51 @@
                 if (boxElement) {
                     selectedTextBox = boxElement;
                     selectedTextBox.classList.add('selected');
-                    const textObj = textObjects[parseInt(boxElement.dataset.textIndex)];
-                    textFontSizeInput.value = textObj.fontSize;
-                    textColorInput.value = textObj.color;
+
+                    const textObjIndex = parseInt(boxElement.dataset.textIndex);
+                    const textObj = textObjects[textObjIndex];
+
+                    if (textObj) {
+                        // Ensure properties exist, provide defaults if not
+                        textObj.fontSize = textObj.fontSize || 12;
+                        textObj.color = textObj.color || '#000000';
+                        textObj.text = textObj.text || ''; // Should always exist but good practice
+                        textObj.autoSize = typeof textObj.autoSize === 'boolean' ? textObj.autoSize : true;
+
+                        textFontSizeInput.value = textObj.fontSize;
+                        textColorInput.value = textObj.color;
+
+                        // Ensure the object in the array is updated if we defaulted
+                        textObjects[textObjIndex] = textObj;
+
+                        // Update visual state for autoSize/resize-mode for reloaded boxes
+                        selectedTextBox.classList.toggle('auto-size', textObj.autoSize);
+                        selectedTextBox.classList.toggle('resize-mode', !textObj.autoSize);
+                        if (!textObj.autoSize) { // If in resize mode, ensure handles are there
+                            Array.from(selectedTextBox.querySelectorAll('.resize-handle')).forEach(h => h.remove()); // Clear old ones first
+                            ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+                                const handle = document.createElement('div');
+                                handle.className = `resize-handle ${pos}`;
+                                selectedTextBox.appendChild(handle);
+                            });
+                        } else { // If in auto-size, ensure no handles
+                             Array.from(selectedTextBox.querySelectorAll('.resize-handle')).forEach(h => h.remove());
+                        }
+
+                    } else {
+                        // Fallback if textObj is somehow not found, though this is less likely if rendering worked
+                        console.error(`Text object at index ${textObjIndex} not found.`);
+                        textFontSizeInput.value = 12;
+                        textColorInput.value = '#000000';
+                    }
+
                     textToolbar.classList.add('visible');
-                    boxElement.querySelector('textarea').focus();
+                    const textarea = boxElement.querySelector('textarea');
+                    if (textarea) {
+                        textarea.focus();
+                    } else {
+                        console.error("Textarea not found in selected text box.");
+                    }
                 } else {
                     selectedTextBox = null;
                     textToolbar.classList.remove('visible');
