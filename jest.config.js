@@ -33,14 +33,16 @@ const config = {
 
   // The glob patterns Jest uses to detect test files.
   testMatch: [
-    '**/tests/**/*.(spec|test).mjs', // For files like utils.spec.mjs or utils.test.mjs in tests/
-    '**/tests/**/?(*.)+(spec|test).js', // Keep if you might have .js tests too
-    '**/?(*.)+(spec|test).mjs', // For files like utils.test.mjs anywhere
-    '**/?(*.)+(spec|test).js' // Keep default for .js files anywhere
+    '**/tests/**/*.(spec|test).[jt]s?(x)', // Matches .js, .jsx, .ts, .tsx in tests/
+    '**/tests/**/?(*.)+(spec|test).[jt]s?(x)', // Matches files like utils.test.js/ts in tests/
+    '**/?(*.)+(spec|test).[jt]s?(x)' // Matches .js, .jsx, .ts, .tsx files anywhere
   ],
 
   // The test environment that will be used for testing
   testEnvironment: 'jest-environment-jsdom',
+
+  // Preset for TypeScript
+  preset: 'ts-jest',
 
   // Jest's default resolver does not support export maps.
   // If you encounter issues with imports from packages that use export maps (like uuid),
@@ -48,16 +50,15 @@ const config = {
   // For Node's ESM support, you might need to run jest with --experimental-vm-modules
   // "scripts": { "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js" } in package.json
 
-  // If you are NOT using Babel for transpilation (i.e., relying on native Node ESM support for .mjs)
-  // and Jest tries to transform .mjs files, you might need to tell it not to:
+  // ts-jest will handle .ts and .tsx files.
+  // The preset 'ts-jest' includes the necessary transform.
+  // If you have other specific transform needs (e.g., for .mjs files if any remain), add them here.
   transform: {
-    // '^.+\\.mjs$': 'babel-jest', // Use this if you want Babel to process .mjs files
+    // Example: If you had .mjs files processed by babel-jest
+    // '^.+\\.mjs$': 'babel-jest',
   },
-  // Or, if you want no transformation for .mjs and are sure Node handles it:
-  // transform: {}, // This might be needed if Jest tries to transform .mjs files by default with an older setup
-
-  // To ensure Jest processes .mjs files as ES modules if "type": "module" isn't enough for Jest's context
-  // extensionsToTreatAsEsm: ['.mjs'], // This can sometimes help Jest recognize .mjs as ESM
+  // extensionsToTreatAsEsm is important for ts-jest with ESM
+  extensionsToTreatAsEsm: ['.ts', '.mts'], // Treat .ts and .mts as ESM
 };
 
 export default config;
