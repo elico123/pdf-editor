@@ -214,7 +214,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
             
-            const { PDFDocument, rgb, StandardFonts, TextAlignment } = PDFLib;
+                    const { PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString } = PDFLib;
 
             // --- DOM Element References ---
             const fileInput = document.getElementById('file-input');
@@ -348,27 +348,30 @@
                  const pdfDocInstance = await PDFDocument.load(bytes, { ignoreEncryption: true });
                  pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
 
-                 // Load edits from Producer metadata field
+                 // Load edits from custom catalog dictionary entry
                  try {
-                    logDebug("Attempting to load editor data from Producer metadata field.");
-                    const producerString = pdfDocInstance.getProducer();
-                    if (producerString && producerString.startsWith('PDFEDITOR_DATA::')) {
-                        logDebug("Found editor data prefix in Producer field.", { producerStringLength: producerString.length });
-                        const jsonData = producerString.substring('PDFEDITOR_DATA::'.length);
+                    logDebug("Attempting to load editor data from custom catalog entry.");
+                    const customDataKey = PDFName.of('com.mycompany.pdfeditor.customdata');
+                    const catalog = pdfDocInstance.catalog;
+                    const customDataValue = catalog.get(customDataKey);
+
+                    if (customDataValue instanceof PDFString || customDataValue instanceof PDFHexString) {
+                        const jsonData = (customDataValue instanceof PDFString) ? customDataValue.asString() : customDataValue.decodeText();
+                        logDebug("Found custom editor data in catalog.", { dataLength: jsonData.length });
                         const savedData = JSON.parse(jsonData);
-                        logDebug("Parsed editor data from Producer field:", savedData);
+                        logDebug("Parsed editor data from catalog:", savedData);
                         textObjects = savedData.textObjects || [];
                         redactionAreas = savedData.redactionAreas || [];
                         logDebug("Loaded textObjects count: " + textObjects.length);
                         logDebug("Loaded redactionAreas count: " + redactionAreas.length);
                     } else {
-                        logDebug("No editor data found in Producer field or prefix mismatch.", { producerString: producerString ? producerString.substring(0, 50) + "..." : "undefined" });
+                        logDebug("No custom editor data found in catalog or not a string type.", { retrievedObjectType: customDataValue ? customDataValue.constructor.name : 'undefined' });
                         textObjects = [];
                         redactionAreas = [];
                     }
                  } catch (e) {
-                     console.error("Failed to load or parse editor data from Producer field:", e);
-                     logDebug("Error loading from Producer field. Resetting textObjects and redactionAreas.", { error: e.message, stack: e.stack });
+                     console.error("Failed to load or parse editor data from custom catalog entry:", e);
+                     logDebug("Error loading from custom catalog entry. Resetting textObjects and redactionAreas.", { error: e.message, stack: e.stack });
                      textObjects = [];
                      redactionAreas = [];
                  }
@@ -441,11 +444,13 @@
                     const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
                     const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
 
-                    // Save editable data in Producer metadata field
+                    // Save editable data in a custom catalog dictionary entry
                     const dataToStore = JSON.stringify({ textObjects, redactionAreas });
-                    const prefixedDataString = `PDFEDITOR_DATA::${dataToStore}`;
-                    finalDoc.setProducer(prefixedDataString);
-                    logDebug("performStandardSave: Set Producer field with editor data.", { producerDataLength: prefixedDataString.length });
+                    const customDataKey = PDFName.of('com.mycompany.pdfeditor.customdata'); // More unique key
+                    const customDataValue = PDFString.of(dataToStore); // Using PDFString
+
+                    finalDoc.catalog.set(customDataKey, customDataValue);
+                    logDebug("performStandardSave: Set custom data in PDF catalog.", { key: customDataKey.toString(), dataLength: dataToStore.length });
 
                     // Apply visible text objects for viewing in other readers
                     for (const textObj of textObjects) {
