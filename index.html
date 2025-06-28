@@ -408,9 +408,34 @@
                     const finalPdfBytes = await finalDoc.save();
                     
                     const originalFileName = (fileInput.files[0]?.name || 'document.pdf').replace(/\.pdf$/i, '');
-                    const newFileName = `${originalFileName}-edited.pdf`;
-                    
-                    downloadBlob(finalPdfBytes, newFileName);
+                    const suggestedName = `${originalFileName}-edited.pdf`;
+
+                    if (window.showSaveFilePicker) {
+                        try {
+                            const handle = await window.showSaveFilePicker({
+                                suggestedName,
+                                types: [{
+                                    description: 'PDF Files',
+                                    accept: { 'application/pdf': ['.pdf'] },
+                                }],
+                            });
+                            const writable = await handle.createWritable();
+                            await writable.write(finalPdfBytes);
+                            await writable.close();
+                        } catch (err) {
+                            // Handle user cancellation or other errors
+                            if (err.name !== 'AbortError') {
+                                console.error('Error saving with showSaveFilePicker:', err);
+                                // Fallback to downloadBlob if showSaveFilePicker fails for other reasons
+                                downloadBlob(finalPdfBytes, suggestedName);
+                            } else {
+                                console.log('Save As dialog cancelled by user.');
+                            }
+                        }
+                    } else {
+                        // Fallback for browsers that don't support showSaveFilePicker
+                        downloadBlob(finalPdfBytes, suggestedName);
+                    }
 
                 } catch (error) {
                     console.error("Failed to save PDF:", error);
