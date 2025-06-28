@@ -1,5 +1,5 @@
 // js/utils.ts
-import { loaderOverlay, loaderText } from './domElements.js'; // Or .ts, let's try .js first for Node ESM compatibility
+import { loaderOverlay as defaultModuleLoaderOverlay, loaderText as defaultModuleLoaderText } from './domElements.js'; // Or .ts, let's try .js first for Node ESM compatibility
 
 // Define an interface for the RGB color object
 interface RgbColor {
@@ -14,21 +14,29 @@ export const hasRtl = (s: string): boolean => {
     return rtlRegex.test(s);
 };
 
-export const showLoader = (text: string): void => {
-    if (loaderText && loaderOverlay) {
-        loaderText.textContent = text;
-        loaderOverlay.classList.remove('hidden');
+export const showLoader = (
+    text: string,
+    // Use the aliased imports for default values
+    loaderTextParam: HTMLElement | null = defaultModuleLoaderText,
+    loaderOverlayParam: HTMLElement | null = defaultModuleLoaderOverlay
+): void => {
+    if (loaderTextParam && loaderOverlayParam) {
+        loaderTextParam.textContent = text;
+        loaderOverlayParam.classList.remove('hidden');
     } else {
         // Fallback or error if elements not found, though they should be
-        console.error("Loader elements not found in domElements.js for showLoader");
+        console.error("Loader elements not found for showLoader. Ensure they are correctly passed or available in default DOM elements.");
     }
 };
 
-export const hideLoader = (): void => {
-    if (loaderOverlay) {
-        loaderOverlay.classList.add('hidden');
+export const hideLoader = (
+    // Use the aliased import for default value
+    loaderOverlayParam: HTMLElement | null = defaultModuleLoaderOverlay
+): void => {
+    if (loaderOverlayParam) {
+        loaderOverlayParam.classList.add('hidden');
     } else {
-        console.error("Loader overlay not found in domElements.js for hideLoader");
+        console.error("Loader overlay not found for hideLoader. Ensure it is correctly passed or available in default DOM elements.");
     }
 };
 

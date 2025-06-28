@@ -33,18 +33,20 @@ const mockedLoaderText: MockHTMLElement = {
 // The factory function now returns our predefined mock objects.
 // Note: The actual domElements.ts exports HTMLElement | null, but our mocks are simplified.
 // This discrepancy is fine for testing the logic of utils.ts as long as the properties utils.ts uses are present.
-jest.mock('../js/domElements.js', () => ({ // Or .ts - let's try .js first
-    loaderOverlay: mockedLoaderOverlay,
-    loaderText: mockedLoaderText,
-}));
+// jest.mock('../js/domElements.js', () => ({ // Or .ts - let's try .js first
+//     loaderOverlay: mockedLoaderOverlay,
+//     loaderText: mockedLoaderText,
+// }));
+// ^^^ No longer needed due to dependency injection in utils.ts functions
 
 // Define a type for the dynamically imported module
 // This should reflect the actual exports from js/utils.ts
 interface UtilsModule {
     hexToRgb: (hex: string | null | undefined) => ({ r: number; g: number; b: number } | null);
     hasRtl: (s: string) => boolean;
-    showLoader: (text: string) => void;
-    hideLoader: () => void;
+    // Updated signatures for showLoader and hideLoader
+    showLoader: (text: string, loaderTextParam?: HTMLElement | null, loaderOverlayParam?: HTMLElement | null) => void;
+    hideLoader: (loaderOverlayParam?: HTMLElement | null) => void;
     downloadBlob: (data: Uint8Array, fileName: string) => void;
 }
 
@@ -179,7 +181,8 @@ describe('Utility Functions', () => {
 
         describe('showLoader', () => {
             test('should make loader visible and set text', () => {
-                showLoader('Loading...');
+                // Pass mocks directly. Cast to `any` or `unknown as HTMLElement | null` as MockHTMLElement is not a true HTMLElement.
+                showLoader('Loading...', mockedLoaderText as any, mockedLoaderOverlay as any);
                 // Assertions are made on our predefined mock objects
                 expect(mockedLoaderOverlay.classList.remove).toHaveBeenCalledWith('hidden');
                 expect(mockedLoaderText.textContent).toBe('Loading...');
@@ -188,7 +191,8 @@ describe('Utility Functions', () => {
 
         describe('hideLoader', () => {
             test('should hide loader', () => {
-                hideLoader();
+                // Pass mock directly
+                hideLoader(mockedLoaderOverlay as any);
                 expect(mockedLoaderOverlay.classList.add).toHaveBeenCalledWith('hidden');
             });
         });
