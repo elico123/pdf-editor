@@ -169,7 +169,7 @@ describe('Utility Functions', () => {
             (global.URL.createObjectURL as jest.Mock) = jest.fn(() => 'blob:http://localhost/mock-url');
             global.URL.revokeObjectURL = jest.fn();
 
-            jest.spyOn(document, 'createElement').mockReturnValue(mockAnchorElement);
+            jest.spyOn(document, 'createElement').mockReturnValue(mockAnchorElement as unknown as HTMLAnchorElement);
             Object.defineProperty(document, 'body', { value: mockDocumentBody, configurable: true, writable: true });
         });
 
