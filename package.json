@@ -5,7 +5,7 @@
   "main": "index.html",
   "type": "module",
   "scripts": {
-    "test": "jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "keywords": [
     "pdf",
@@ -16,7 +16,6 @@
   "author": "PocketPDF User",
   "license": "ISC",
   "devDependencies": {
-    "jest": "^29.0.0",
-    "jest-environment-jsdom": "^30.0.2"
+    "jest": "^29.0.0"
   }
 }
