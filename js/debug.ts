@@ -24,7 +24,7 @@ export const logDebug = (message: string, data?: any): void => {
             dataPre.style.backgroundColor = 'rgba(255,255,255,0.1)';
             dataPre.style.borderRadius = '3px';
             msgDiv.appendChild(dataPre);
-        } catch (e) {
+        } catch (e: any) { // Explicitly type 'e' as any
             const dataDiv = document.createElement('div');
             dataDiv.textContent = `[Unserializable data: ${e.message}]`;
             dataDiv.style.marginLeft = '10px';

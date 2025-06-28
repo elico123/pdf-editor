@@ -36,13 +36,9 @@ interface TextObject {
     autoSize: boolean;
 }
 
-declare global {
-    interface Window {
-        pdfjsLib: any; // Consider more specific types if available for pdfjsLib
-        showSaveFilePicker?: (options?: any) => Promise<any>; // File System Access API
-    }
-}
-
+// Removed declare global for Window here; it's expected to be in pdfSetup.ts or a dedicated .d.ts file.
+// If pdfjsLib and showSaveFilePicker are needed globally and not typed elsewhere,
+// they would need a consolidated global declaration. For now, assuming pdfSetup.ts handles PDFLib/pdfjsLib globals.
 
 document.addEventListener('DOMContentLoaded', () => {
     // Re-alias pdfLibCore objects for convenience if needed, or use pdfLibCore.PDFDocument etc.
@@ -155,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 logDebug("No custom editor data found in catalog or not a string type.", { retrievedObjectType: customDataValue ? customDataValue.constructor.name : 'undefined' });
             }
-         } catch (e) {
+         } catch (e: any) { // Explicitly type 'e' as any
              console.error("Failed to load or parse editor data from custom catalog entry:", e);
              logDebug("Error loading from custom catalog entry. textObjects and redactionAreas remain empty.", { error: e.message, stack: e.stack });
          }
@@ -629,42 +625,43 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- TOOLBAR EVENT LISTENERS ---
+    // --- TOOLBAR EVENT LISTENERS ---
     if (dom.toolbarResizeBtn) { // Redaction resize
         dom.toolbarResizeBtn.addEventListener('click', () => {
             if (!selectedRedactionBox) return;
-            selectedRedactionBox.classList.toggle('resize-mode');
-            if (selectedRedactionBox.classList.contains('resize-mode')) {
+            selectedRedactionBox.classList.toggle('resize-mode'); // Guarded by above check
+            if (selectedRedactionBox.classList.contains('resize-mode')) { // Guarded
                  ['nw', 'ne', 'sw', 'se'].forEach(pos => {
                     const handle = document.createElement('div');
                     handle.className = `resize-handle ${pos}`;
-                    selectedRedactionBox.appendChild(handle); // selectedRedactionBox is HTMLDivElement
+                    selectedRedactionBox.appendChild(handle); // Guarded
                 });
             } else {
-                Array.from(selectedRedactionBox.querySelectorAll('.resize-handle')).forEach(h => h.remove());
+                Array.from(selectedRedactionBox.querySelectorAll('.resize-handle')).forEach(h => h.remove()); // Guarded
             }
         });
     }
 
     if (dom.textToolbarResizeBtn) { // Textbox resize/autosize toggle
         dom.textToolbarResizeBtn.addEventListener('click', async () => {
-            if (!selectedTextBox || !selectedTextBox.dataset.textIndex) return;
+            if (!selectedTextBox || !selectedTextBox.dataset.textIndex) return; // Guard for selectedTextBox
             const textObj = textObjects[parseInt(selectedTextBox.dataset.textIndex, 10)];
             if (!textObj) return;
 
             textObj.autoSize = !textObj.autoSize;
-            selectedTextBox.classList.toggle('auto-size', textObj.autoSize);
-            selectedTextBox.classList.toggle('resize-mode', !textObj.autoSize);
+            selectedTextBox.classList.toggle('auto-size', textObj.autoSize); // Guarded by above check
+            selectedTextBox.classList.toggle('resize-mode', !textObj.autoSize); // Guarded
 
             if (!textObj.autoSize) {
                  ['nw', 'ne', 'sw', 'se'].forEach(pos => {
                     const handle = document.createElement('div');
                     handle.className = `resize-handle ${pos}`;
-                    selectedTextBox.appendChild(handle); // selectedTextBox is HTMLDivElement
+                    selectedTextBox.appendChild(handle); // Guarded
                 });
             } else {
-                Array.from(selectedTextBox.querySelectorAll('.resize-handle')).forEach(h => h.remove());
+                Array.from(selectedTextBox.querySelectorAll('.resize-handle')).forEach(h => h.remove()); // Guarded
             }
-            const textarea = selectedTextBox.querySelector('textarea');
+            const textarea = selectedTextBox.querySelector('textarea'); // Guarded
             if (textarea) await updateTextBoxSize(textarea);
         });
     }
@@ -740,6 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const interactionTarget: HTMLElement | Document = dom.pageContainer || document;
 
+    // Ensure EventListener casts are applied
     interactionTarget.addEventListener('mousedown', handleInteractionStart as EventListener);
     document.addEventListener('mousemove', handleInteractionMove as EventListener);
     document.addEventListener('mouseup', handleInteractionEnd as EventListener);
