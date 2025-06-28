@@ -1,0 +1,20 @@
+{
+  "name": "pocketpdf",
+  "version": "1.0.0",
+  "description": "Offline PDF Editor - Edit, Annotate, and Manage PDFs directly in your browser.",
+  "main": "index.html",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "pdf",
+    "editor",
+    "offline",
+    "browser"
+  ],
+  "author": "PocketPDF User",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^29.0.0"
+  }
+}
