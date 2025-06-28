@@ -1,5 +1,5 @@
 // js/utils.mjs
-import { loaderOverlay, loaderText } from './domElements.mjs';
+import { loaderOverlay as defaultLoaderOverlay, loaderText as defaultLoaderText } from './domElements.mjs';
 
 export const hasRtl = (s) => {
     const rtlChars = '\u0590-\u05FF\u0600-\u06FF'; // Hebrew and Arabic character ranges
@@ -7,21 +7,21 @@ export const hasRtl = (s) => {
     return rtlRegex.test(s);
 };
 
-export const showLoader = text => {
+export const showLoader = (text, loaderText = defaultLoaderText, loaderOverlay = defaultLoaderOverlay) => {
     if (loaderText && loaderOverlay) {
         loaderText.textContent = text;
         loaderOverlay.classList.remove('hidden');
     } else {
         // Fallback or error if elements not found, though they should be
-        console.error("Loader elements not found in domElements.js for showLoader");
+        console.error("Loader elements not found for showLoader. Ensure they are correctly passed or available in default DOM elements.");
     }
 };
 
-export const hideLoader = () => {
+export const hideLoader = (loaderOverlay = defaultLoaderOverlay) => {
     if (loaderOverlay) {
         loaderOverlay.classList.add('hidden');
     } else {
-        console.error("Loader overlay not found in domElements.js for hideLoader");
+        console.error("Loader overlay not found for hideLoader. Ensure it is correctly passed or available in default DOM elements.");
     }
 };
 

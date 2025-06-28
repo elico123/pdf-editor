@@ -15,12 +15,7 @@ const mockedLoaderText = {
     textContent: '',
 };
 
-// Mock the domElements module
-// The factory function now returns our predefined mock objects.
-jest.mock('../js/domElements.mjs', () => ({
-    loaderOverlay: mockedLoaderOverlay,
-    loaderText: mockedLoaderText,
-}));
+// No longer mocking domElements.mjs globally as we will inject dependencies.
 
 describe('Utility Functions', () => {
     describe('hexToRgb', () => {
@@ -97,15 +92,15 @@ describe('Utility Functions', () => {
         let mockAnchorElement;
         let mockDocumentBody;
 
+        // Import utils once for this suite. No complex mocking needed here anymore for these.
         beforeAll(async () => {
-            // Dynamically import the DOM-interacting functions
-            const utils = await import('../js/utils.mjs');
-            showLoader = utils.showLoader;
-            hideLoader = utils.hideLoader;
-            downloadBlob = utils.downloadBlob;
+            const utilsModule = await import('../js/utils.mjs');
+            showLoader = utilsModule.showLoader;
+            hideLoader = utilsModule.hideLoader;
+            downloadBlob = utilsModule.downloadBlob;
         });
 
-        beforeEach(() => {
+        beforeEach(() => { // No longer async, no special module resets or re-imports needed here for domElements
             // Reset our predefined mock objects before each test
             mockedLoaderOverlay.classList.add.mockClear();
             mockedLoaderOverlay.classList.remove.mockClear();
@@ -136,7 +131,8 @@ describe('Utility Functions', () => {
 
         describe('showLoader', () => {
             test('should make loader visible and set text', () => {
-                showLoader('Loading...');
+                // Now passing mocks directly
+                showLoader('Loading...', mockedLoaderText, mockedLoaderOverlay);
                 // Assertions are made on our predefined mock objects
                 expect(mockedLoaderOverlay.classList.remove).toHaveBeenCalledWith('hidden');
                 expect(mockedLoaderText.textContent).toBe('Loading...');
@@ -145,7 +141,8 @@ describe('Utility Functions', () => {
 
         describe('hideLoader', () => {
             test('should hide loader', () => {
-                hideLoader();
+                // Now passing mock directly
+                hideLoader(mockedLoaderOverlay);
                 expect(mockedLoaderOverlay.classList.add).toHaveBeenCalledWith('hidden');
             });
         });
