@@ -609,8 +609,8 @@
 
                     if (textObj) {
                         // Ensure properties exist, provide defaults if not
-                        textObj.fontSize = textObj.fontSize || 12;
-                        textObj.color = textObj.color || '#000000';
+                        textObj.fontSize = textObj.fontSize || DEFAULT_FONT_SIZE;
+                        textObj.color = textObj.color || DEFAULT_TEXT_COLOR;
                         textObj.text = textObj.text || ''; // Should always exist but good practice
                         textObj.autoSize = typeof textObj.autoSize === 'boolean' ? textObj.autoSize : true;
 
