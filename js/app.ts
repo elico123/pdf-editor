@@ -629,46 +629,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dom.toolbarResizeBtn) { // Redaction resize
         dom.toolbarResizeBtn.addEventListener('click', () => {
             if (!selectedRedactionBox) return;
-            selectedRedactionBox.classList.toggle('resize-mode'); // Guarded by above check
-            if (selectedRedactionBox.classList.contains('resize-mode')) { // Guarded
+            selectedRedactionBox.classList.toggle('resize-mode');
+            if (selectedRedactionBox.classList.contains('resize-mode')) {
                  ['nw', 'ne', 'sw', 'se'].forEach(pos => {
                     const handle = document.createElement('div');
                     handle.className = `resize-handle ${pos}`;
-                    selectedRedactionBox.appendChild(handle); // Guarded
+                    if (selectedRedactionBox) selectedRedactionBox.appendChild(handle); // Null check
                 });
             } else {
-                Array.from(selectedRedactionBox.querySelectorAll('.resize-handle')).forEach(h => h.remove()); // Guarded
+                Array.from(selectedRedactionBox.querySelectorAll('.resize-handle')).forEach(h => h.remove());
             }
         });
     }
 
     if (dom.textToolbarResizeBtn) { // Textbox resize/autosize toggle
         dom.textToolbarResizeBtn.addEventListener('click', async () => {
-            if (!selectedTextBox || !selectedTextBox.dataset.textIndex) return; // Guard for selectedTextBox
+            if (!selectedTextBox || !selectedTextBox.dataset || !selectedTextBox.dataset.textIndex) return;
             const textObj = textObjects[parseInt(selectedTextBox.dataset.textIndex, 10)];
             if (!textObj) return;
 
             textObj.autoSize = !textObj.autoSize;
-            selectedTextBox.classList.toggle('auto-size', textObj.autoSize); // Guarded by above check
-            selectedTextBox.classList.toggle('resize-mode', !textObj.autoSize); // Guarded
+            selectedTextBox.classList.toggle('auto-size', textObj.autoSize);
+            selectedTextBox.classList.toggle('resize-mode', !textObj.autoSize);
 
             if (!textObj.autoSize) {
                  ['nw', 'ne', 'sw', 'se'].forEach(pos => {
                     const handle = document.createElement('div');
                     handle.className = `resize-handle ${pos}`;
-                    selectedTextBox.appendChild(handle); // Guarded
+                    if (selectedTextBox) selectedTextBox.appendChild(handle); // Null check
                 });
             } else {
-                Array.from(selectedTextBox.querySelectorAll('.resize-handle')).forEach(h => h.remove()); // Guarded
+                Array.from(selectedTextBox.querySelectorAll('.resize-handle')).forEach(h => h.remove());
             }
-            const textarea = selectedTextBox.querySelector('textarea'); // Guarded
+            const textarea = selectedTextBox.querySelector('textarea');
             if (textarea) await updateTextBoxSize(textarea);
         });
     }
 
     if (dom.toolbarDeleteBtn) { // Redaction delete
         dom.toolbarDeleteBtn.addEventListener('click', async () => {
-            if (!selectedRedactionBox || !selectedRedactionBox.dataset.redactionIndex) return;
+            if (!selectedRedactionBox || !selectedRedactionBox.dataset || !selectedRedactionBox.dataset.redactionIndex) return;
             const index = parseInt(selectedRedactionBox.dataset.redactionIndex, 10);
             if (isNaN(index)) return;
             redactionAreas.splice(index, 1);
@@ -679,7 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (dom.textFontSizeInput) {
         dom.textFontSizeInput.addEventListener('input', async (e: Event) => {
-            if (!selectedTextBox || !selectedTextBox.dataset.textIndex) return;
+            if (!selectedTextBox || !selectedTextBox.dataset || !selectedTextBox.dataset.textIndex) return;
             const target = e.target as HTMLInputElement;
             const index = parseInt(selectedTextBox.dataset.textIndex, 10);
             const newSize = parseInt(target.value, 10);
@@ -688,7 +688,7 @@ document.addEventListener('DOMContentLoaded', () => {
             textObjects[index].fontSize = newSize;
             const textarea = selectedTextBox.querySelector('textarea');
             const canvas = selectedTextBox.closest('.relative')?.querySelector('canvas');
-            if (textarea && canvas && pdfDoc) {
+            if (textarea && canvas && pdfDoc && selectedTextBox) { // Added null check for selectedTextBox
                 const page: PDFJSPage = await pdfDoc.getPage(textObjects[index].originalPageNum);
                 const scale = canvas.width / page.getViewport({scale: 1.0}).width;
                 textarea.style.fontSize = `${newSize * scale}px`;
@@ -699,11 +699,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (dom.textColorInput) {
         dom.textColorInput.addEventListener('input', (e: Event) => {
-            if (!selectedTextBox || !selectedTextBox.dataset.textIndex) return;
+            if (!selectedTextBox || !selectedTextBox.dataset || !selectedTextBox.dataset.textIndex) return;
             const target = e.target as HTMLInputElement;
             const index = parseInt(selectedTextBox.dataset.textIndex, 10);
             const newColor = target.value;
-            if (textObjects[index]) {
+            if (textObjects[index] && selectedTextBox) { // Added null check for selectedTextBox
                 textObjects[index].color = newColor;
                 const textarea = selectedTextBox.querySelector('textarea');
                 if (textarea) textarea.style.color = newColor;
@@ -713,7 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (dom.textToolbarDeleteBtn) {
         dom.textToolbarDeleteBtn.addEventListener('click', async () => {
-            if (!selectedTextBox || !selectedTextBox.dataset.textIndex) return;
+            if (!selectedTextBox || !selectedTextBox.dataset || !selectedTextBox.dataset.textIndex) return;
             const index = parseInt(selectedTextBox.dataset.textIndex, 10);
             if (isNaN(index)) return;
             textObjects.splice(index, 1);
@@ -738,12 +738,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const interactionTarget: HTMLElement | Document = dom.pageContainer || document;
 
     // Ensure EventListener casts are applied
-    interactionTarget.addEventListener('mousedown', handleInteractionStart as EventListener);
-    document.addEventListener('mousemove', handleInteractionMove as EventListener);
-    document.addEventListener('mouseup', handleInteractionEnd as EventListener);
-    interactionTarget.addEventListener('touchstart', handleInteractionStart as EventListener, { passive: false });
-    document.addEventListener('touchmove', handleInteractionMove as EventListener, { passive: false });
-    document.addEventListener('touchend', handleInteractionEnd as EventListener);
+    interactionTarget.addEventListener('mousedown', handleInteractionStart as unknown as EventListener);
+    document.addEventListener('mousemove', handleInteractionMove as unknown as EventListener);
+    document.addEventListener('mouseup', handleInteractionEnd as unknown as EventListener);
+    interactionTarget.addEventListener('touchstart', handleInteractionStart as unknown as EventListener, { passive: false });
+    document.addEventListener('touchmove', handleInteractionMove as unknown as EventListener, { passive: false });
+    document.addEventListener('touchend', handleInteractionEnd as unknown as EventListener);
 
     async function handleInteractionStart(e: MouseEvent | TouchEvent): Promise<void> {
         const touch = (e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : (e as MouseEvent);
