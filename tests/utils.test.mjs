@@ -1,9 +1,36 @@
 // tests/utils.test.mjs
+import { describe, test, expect, beforeEach, afterEach, jest, beforeAll } from '@jest/globals';
+// NO static imports from ../js/utils.mjs here
 
-import { hexToRgb, hasRtl, showLoader, hideLoader, downloadBlob } from '../js/utils.mjs';
+// Define the mock objects that will be provided by the mocked domElements.mjs
+const mockedLoaderOverlay = {
+    classList: {
+        add: jest.fn(),
+        remove: jest.fn(),
+    },
+    style: {},
+};
+
+const mockedLoaderText = {
+    textContent: '',
+};
+
+// Mock the domElements module
+// The factory function now returns our predefined mock objects.
+jest.mock('../js/domElements.mjs', () => ({
+    loaderOverlay: mockedLoaderOverlay,
+    loaderText: mockedLoaderText,
+}));
 
 describe('Utility Functions', () => {
     describe('hexToRgb', () => {
+        let hexToRgb;
+
+        beforeAll(async () => {
+            const utils = await import('../js/utils.mjs');
+            hexToRgb = utils.hexToRgb;
+        });
+
         test('should convert valid hex color (with #) to RGB object', () => {
             expect(hexToRgb('#FF0000')).toEqual({ r: 255, g: 0, b: 0 });
             expect(hexToRgb('#00FF00')).toEqual({ r: 0, g: 255, b: 0 });
@@ -32,6 +59,13 @@ describe('Utility Functions', () => {
     });
 
     describe('hasRtl', () => {
+        let hasRtl;
+
+        beforeAll(async () => {
+            const utils = await import('../js/utils.mjs');
+            hasRtl = utils.hasRtl;
+        });
+
         test('should return true for strings containing Hebrew characters', () => {
             expect(hasRtl('שלום עולם')).toBe(true);
             expect(hasRtl('Hello שלום World')).toBe(true);
@@ -59,15 +93,23 @@ describe('Utility Functions', () => {
     });
 
     describe('DOM-interacting Utilities', () => {
-        let mockLoaderOverlay;
-        let mockLoaderText;
+        let showLoader, hideLoader, downloadBlob;
         let mockAnchorElement;
         let mockDocumentBody;
 
+        beforeAll(async () => {
+            // Dynamically import the DOM-interacting functions
+            const utils = await import('../js/utils.mjs');
+            showLoader = utils.showLoader;
+            hideLoader = utils.hideLoader;
+            downloadBlob = utils.downloadBlob;
+        });
+
         beforeEach(() => {
-            // Mock for loaderOverlay and loaderText
-            mockLoaderOverlay = { classList: { add: jest.fn(), remove: jest.fn() }, style: {} };
-            mockLoaderText = { textContent: '' };
+            // Reset our predefined mock objects before each test
+            mockedLoaderOverlay.classList.add.mockClear();
+            mockedLoaderOverlay.classList.remove.mockClear();
+            mockedLoaderText.textContent = '';
 
             // Mock for downloadBlob
             mockAnchorElement = {
@@ -81,80 +123,35 @@ describe('Utility Functions', () => {
                 removeChild: jest.fn(),
             };
 
-            // JSDOM doesn't have createObjectURL/revokeObjectURL by default
             global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost/mock-url');
             global.URL.revokeObjectURL = jest.fn();
 
-            // Spy on document.getElementById and document.createElement
-            // We need to import them from the module being tested, not directly use jest.spyOn
-            // This is tricky because utils.js imports from domElements.js which does the getElementById
-            // For now, we'll assume utils.js receives these elements somehow (passed in or via its own imports)
-            // The current utils.js imports dom.loaderOverlay and dom.loaderText directly.
-            // We need to mock the *module* domElements.js for utils.js
-            // This is more advanced Jest mocking.
-            // A simpler approach for now: modify utils.js to accept elements as parameters (less ideal)
-            // Or, for this test, we can assume the imported elements in utils.js are these mocks.
-            // This requires utils.js to be structured to allow injection or easy mocking of its imports.
-
-            // Let's assume for this test that utils.js somehow gets these mocks.
-            // This would typically be done with jest.mock('../js/domElements.js', ...)
-            // Since I cannot create that mock here in this step, I will write the tests
-            // as if the utils functions directly used document.getElementById, and mock that.
-            // This is a simplification for this environment.
-
-            jest.spyOn(document, 'getElementById').mockImplementation(id => {
-                if (id === 'loader-overlay') return mockLoaderOverlay;
-                if (id === 'loader-text') return mockLoaderText;
-                return null;
-            });
             jest.spyOn(document, 'createElement').mockReturnValue(mockAnchorElement);
-            // Mock document.body for appendChild/removeChild
-            Object.defineProperty(document, 'body', { value: mockDocumentBody, configurable: true });
+            Object.defineProperty(document, 'body', { value: mockDocumentBody, configurable: true, writable: true });
         });
 
         afterEach(() => {
-            jest.restoreAllMocks(); // Clean up spies
+            jest.restoreAllMocks();
         });
 
         describe('showLoader', () => {
             test('should make loader visible and set text', () => {
-                // Re-import utils inside describe or test if its internal domElement refs need to be fresh for mocks
-                // This is complex. For now, assuming utils.js uses the mocked getElementById when it runs.
-                // A better way is to refactor utils.js to get dom elements passed in, or use module mocks.
-                // For this step, we'll test the *intent* assuming elements are found.
-
-                // We need to get a fresh import of utils AFTER mocks are set up if it resolves imports at load time.
-                // This is a limitation of this testing environment.
-                // For now, this test may not perfectly reflect utils.js internal import of domElements.
-                // We will test the logic assuming it *can* get the elements.
-                // The import statement at the top of this file will use the unmocked version.
-                // The correct way is `jest.mock` for `domElements.js`
-
-                // Let's test by calling a hypothetical version of showLoader that takes elements.
-                // This means we can't directly test the exported showLoader as-is without module mocks.
-                // Alternative: We test the side effects assuming the global document.getElementById is hit by utils.
-                // For ESM, require() is not available. We need to use dynamic import() or ensure mocks are effective for static imports.
-                // Given Jest's ESM support can be tricky with module-level mocks without specific config,
-                // this re-require pattern changes. We'll assume the top-level import is affected by spies for now.
-                // const { showLoader } = await import('../js/utils.mjs'); // Dynamic import if needed
-
-                showLoader('Loading...'); // Uses the statically imported showLoader
-                expect(mockLoaderOverlay.classList.remove).toHaveBeenCalledWith('hidden');
-                expect(mockLoaderText.textContent).toBe('Loading...');
+                showLoader('Loading...');
+                // Assertions are made on our predefined mock objects
+                expect(mockedLoaderOverlay.classList.remove).toHaveBeenCalledWith('hidden');
+                expect(mockedLoaderText.textContent).toBe('Loading...');
             });
         });
 
         describe('hideLoader', () => {
             test('should hide loader', () => {
-                // const { hideLoader } = await import('../js/utils.mjs'); // if using dynamic import
-                hideLoader(); // Uses the statically imported hideLoader
-                expect(mockLoaderOverlay.classList.add).toHaveBeenCalledWith('hidden');
+                hideLoader();
+                expect(mockedLoaderOverlay.classList.add).toHaveBeenCalledWith('hidden');
             });
         });
 
         describe('downloadBlob', () => {
             test('should trigger download of a blob', () => {
-                // const { downloadBlob } = await import('../js/utils.mjs'); // if using dynamic import
                 const fakeData = new Uint8Array([1, 2, 3]);
                 const fileName = 'test.pdf';
 
