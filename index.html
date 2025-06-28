@@ -306,7 +306,8 @@
             let pdfDoc = null, pdfBytes = null, pageOrder = [], activeTool = null;
             let redactionAreas = [], textObjects = [];
             let selectedRedactionBox = null, selectedTextBox = null;
-            const METADATA_KEY = 'pdf-editor-data.json';
+            // const METADATA_KEY = 'pdf-editor-data.json'; // Old key for attachments
+            const EDITOR_METADATA_KEY = 'com.mycompany.pdfeditor.customdata';
 
 
             // --- Core App Logic ---
@@ -348,10 +349,15 @@
                  const pdfDocInstance = await PDFDocument.load(bytes, { ignoreEncryption: true });
                  pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
 
+                 // Initialize/reset editor data state before attempting to load
+                 textObjects = [];
+                 redactionAreas = [];
+                 logDebug("loadPdfFromBytes: Initialized/reset textObjects and redactionAreas.");
+
                  // Load edits from custom catalog dictionary entry
                  try {
-                    logDebug("Attempting to load editor data from custom catalog entry.");
-                    const customDataKey = PDFName.of('com.mycompany.pdfeditor.customdata');
+                    logDebug("Attempting to load editor data from custom catalog entry with key: " + EDITOR_METADATA_KEY);
+                    const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
                     const catalog = pdfDocInstance.catalog;
                     const customDataValue = catalog.get(customDataKey);
 
@@ -360,20 +366,18 @@
                         logDebug("Found custom editor data in catalog.", { dataLength: jsonData.length });
                         const savedData = JSON.parse(jsonData);
                         logDebug("Parsed editor data from catalog:", savedData);
-                        textObjects = savedData.textObjects || [];
+                        textObjects = savedData.textObjects || []; // Assign if parsing succeeds
                         redactionAreas = savedData.redactionAreas || [];
                         logDebug("Loaded textObjects count: " + textObjects.length);
                         logDebug("Loaded redactionAreas count: " + redactionAreas.length);
                     } else {
                         logDebug("No custom editor data found in catalog or not a string type.", { retrievedObjectType: customDataValue ? customDataValue.constructor.name : 'undefined' });
-                        textObjects = [];
-                        redactionAreas = [];
+                        // textObjects and redactionAreas remain empty as initialized above
                     }
                  } catch (e) {
                      console.error("Failed to load or parse editor data from custom catalog entry:", e);
-                     logDebug("Error loading from custom catalog entry. Resetting textObjects and redactionAreas.", { error: e.message, stack: e.stack });
-                     textObjects = [];
-                     redactionAreas = [];
+                     logDebug("Error loading from custom catalog entry. textObjects and redactionAreas remain empty.", { error: e.message, stack: e.stack });
+                     // textObjects and redactionAreas remain empty as initialized above
                  }
                  
                  pageOrder = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
@@ -446,13 +450,16 @@
 
                     // Save editable data in a custom catalog dictionary entry
                     const dataToStore = JSON.stringify({ textObjects, redactionAreas });
-                    const customDataKey = PDFName.of('com.mycompany.pdfeditor.customdata'); // More unique key
-                    const customDataValue = PDFString.of(dataToStore); // Using PDFString
+                    const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
+                    const customDataValue = PDFString.of(dataToStore);
 
                     finalDoc.catalog.set(customDataKey, customDataValue);
                     logDebug("performStandardSave: Set custom data in PDF catalog.", { key: customDataKey.toString(), dataLength: dataToStore.length });
 
-                    // Apply visible text objects for viewing in other readers
+                    // The following loop that draws text onto the page is removed to prevent duplicate text
+                    // when reloading in this editor. Text visibility in other viewers for *this save* will rely
+                    // on those viewers potentially understanding the custom metadata, or a future "export/flatten" feature.
+                    /*
                     for (const textObj of textObjects) {
                         const pageIndex = pageOrder.indexOf(textObj.originalPageNum);
                         if (pageIndex === -1) continue;
@@ -483,6 +490,7 @@
                             textAlign: textObj.direction === 'rtl' ? TextAlignment.Right : TextAlignment.Left,
                         });
                     }
+                    */
                     
                     const finalPdfBytes = await finalDoc.save();
                     
