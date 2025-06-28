@@ -1,5 +1,5 @@
-// js/utils.js
-import { loaderOverlay, loaderText } from './domElements.js';
+// js/utils.mjs
+import { loaderOverlay, loaderText } from './domElements.mjs';
 
 export const hasRtl = (s) => {
     const rtlChars = '\u0590-\u05FF\u0600-\u06FF'; // Hebrew and Arabic character ranges

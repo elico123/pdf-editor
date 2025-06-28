@@ -1,11 +1,11 @@
-// js/debug.js
+// js/debug.mjs
 import {
     debugOverlay,
     debugMessagesContainer,
     debugClearBtn,
     debugCloseBtn,
     toggleDebugBtn
-} from './domElements.js';
+} from './domElements.mjs';
 
 export const logDebug = (message, data) => {
     if (!debugOverlay || debugOverlay.classList.contains('hidden')) return; // Don't process if hidden or elements not found
