@@ -1,0 +1,66 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Or your default branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write # Required for OIDC token if using newer gh-pages actions without GITHUB_TOKEN
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }} # To output the deployment URL
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci # Use ci for cleaner installs in CI
+
+      - name: Build project
+        run: npm run build # This runs `tsc`
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4 # Official GitHub action to configure Pages
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3 # Official GitHub action to upload artifact
+        with:
+          # Path to the static assets that will be deployed to GitHub Pages.
+          # This should include your index.html and the dist folder.
+          # If index.html is at the root and js is in dist/js,
+          # and index.html correctly references ./dist/js/app.js,
+          # then the path should be the root of your built site.
+          # For now, assuming the build output is structured to be served from root.
+          # If your tsc output goes to 'dist' and index.html is at the root,
+          # this action expects everything to be served from the root of the artifact.
+          # We might need to adjust what goes into the artifact if index.html isn't in `dist`.
+          # A common pattern is to have a 'public' or 'site' folder that contains index.html and dist/.
+          # For now, let's assume the build places files correctly relative to index.html at root.
+          # If `index.html` is at the root and references `dist/js/app.js`, then the artifact
+          # should contain `index.html` and the `dist` directory.
+          # The default path is '.', which means the entire workspace.
+          path: '.'
+          # If your site is in a subfolder (e.g. 'public' or 'site') after build, specify it here.
+          # Example: path: './public'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4 # Official GitHub action to deploy to Pages
+        # This action does not need GITHUB_TOKEN if using OIDC with new configure-pages and upload-pages-artifact.
+        # It deploys the artifact uploaded in the previous step.
+        # Ensure your repository settings have GitHub Pages configured to build from "GitHub Actions".
+        # No `publish_dir` or `github_token` needed here with the new official actions flow.
