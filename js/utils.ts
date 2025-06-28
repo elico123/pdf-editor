@@ -1,5 +1,5 @@
 // js/utils.ts
-import { loaderOverlay as defaultModuleLoaderOverlay, loaderText as defaultModuleLoaderText } from './domElements.js'; // Or .ts, let's try .js first for Node ESM compatibility
+import { loaderOverlay as defaultModuleLoaderOverlay, loaderText as defaultModuleLoaderText } from './domElements.ts';
 
 // Define an interface for the RGB color object
 interface RgbColor {
