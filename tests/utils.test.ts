@@ -2,8 +2,17 @@
 import { describe, test, expect, beforeEach, afterEach, jest, beforeAll } from '@jest/globals';
 // NO static imports from ../js/utils.mjs here
 
-// Define the mock objects that will be provided by the mocked domElements.mjs
-const mockedLoaderOverlay = {
+// Define types for mock objects
+interface MockHTMLElement {
+    classList: {
+        add: jest.Mock;
+        remove: jest.Mock;
+    };
+    style: Partial<CSSStyleDeclaration>; // Using Partial as we might not mock all style properties
+    textContent?: string | null;
+}
+
+const mockedLoaderOverlay: MockHTMLElement = {
     classList: {
         add: jest.fn(),
         remove: jest.fn(),
@@ -11,23 +20,43 @@ const mockedLoaderOverlay = {
     style: {},
 };
 
-const mockedLoaderText = {
+const mockedLoaderText: MockHTMLElement = {
+    classList: { // Add to satisfy MockHTMLElement, even if not directly used by mockedLoaderText
+        add: jest.fn(),
+        remove: jest.fn(),
+    },
+    style: {},
     textContent: '',
 };
 
 // Mock the domElements module
 // The factory function now returns our predefined mock objects.
-jest.mock('../js/domElements.mjs', () => ({
-    loaderOverlay: mockedLoaderOverlay,
-    loaderText: mockedLoaderText,
-}));
+// Note: The actual domElements.ts exports HTMLElement | null, but our mocks are simplified.
+// This discrepancy is fine for testing the logic of utils.ts as long as the properties utils.ts uses are present.
+// jest.mock('../js/domElements.js', () => ({ // Or .ts - let's try .js first
+//     loaderOverlay: mockedLoaderOverlay,
+//     loaderText: mockedLoaderText,
+// }));
+// ^^^ No longer needed due to dependency injection in utils.ts functions
+
+// Define a type for the dynamically imported module
+// This should reflect the actual exports from js/utils.ts
+interface UtilsModule {
+    hexToRgb: (hex: string | null | undefined) => ({ r: number; g: number; b: number } | null);
+    hasRtl: (s: string) => boolean;
+    // Updated signatures for showLoader and hideLoader
+    showLoader: (text: string, loaderTextParam?: HTMLElement | null, loaderOverlayParam?: HTMLElement | null) => void;
+    hideLoader: (loaderOverlayParam?: HTMLElement | null) => void;
+    downloadBlob: (data: Uint8Array, fileName: string) => void;
+}
+
 
 describe('Utility Functions', () => {
     describe('hexToRgb', () => {
-        let hexToRgb;
+        let hexToRgb: UtilsModule['hexToRgb'];
 
         beforeAll(async () => {
-            const utils = await import('../js/utils.mjs');
+            const utils = await import('../js/utils.ts') as unknown as UtilsModule;
             hexToRgb = utils.hexToRgb;
         });
 
@@ -59,10 +88,10 @@ describe('Utility Functions', () => {
     });
 
     describe('hasRtl', () => {
-        let hasRtl;
+        let hasRtl: UtilsModule['hasRtl'];
 
         beforeAll(async () => {
-            const utils = await import('../js/utils.mjs');
+            const utils = await import('../js/utils.ts') as unknown as UtilsModule;
             hasRtl = utils.hasRtl;
         });
 
@@ -93,13 +122,29 @@ describe('Utility Functions', () => {
     });
 
     describe('DOM-interacting Utilities', () => {
-        let showLoader, hideLoader, downloadBlob;
-        let mockAnchorElement;
-        let mockDocumentBody;
+        let showLoader: UtilsModule['showLoader'];
+        let hideLoader: UtilsModule['hideLoader'];
+        let downloadBlob: UtilsModule['downloadBlob'];
+
+        interface MockAnchorElement {
+            href: string;
+            download: string;
+            style: Partial<CSSStyleDeclaration>;
+            click: jest.Mock;
+            // appendChild and removeChild are not part of anchor, but of document.body
+        }
+
+        interface MockDocumentBody {
+            appendChild: jest.Mock;
+            removeChild: jest.Mock;
+        }
+
+        let mockAnchorElement: MockAnchorElement;
+        let mockDocumentBody: MockDocumentBody;
 
         beforeAll(async () => {
             // Dynamically import the DOM-interacting functions
-            const utils = await import('../js/utils.mjs');
+            const utils = await import('../js/utils.ts') as unknown as UtilsModule;
             showLoader = utils.showLoader;
             hideLoader = utils.hideLoader;
             downloadBlob = utils.downloadBlob;
@@ -123,10 +168,10 @@ describe('Utility Functions', () => {
                 removeChild: jest.fn(),
             };
 
-            global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost/mock-url');
+            (global.URL.createObjectURL as jest.Mock) = jest.fn(() => 'blob:http://localhost/mock-url');
             global.URL.revokeObjectURL = jest.fn();
 
-            jest.spyOn(document, 'createElement').mockReturnValue(mockAnchorElement);
+            jest.spyOn(document, 'createElement').mockReturnValue(mockAnchorElement as unknown as HTMLAnchorElement);
             Object.defineProperty(document, 'body', { value: mockDocumentBody, configurable: true, writable: true });
         });
 
@@ -136,7 +181,8 @@ describe('Utility Functions', () => {
 
         describe('showLoader', () => {
             test('should make loader visible and set text', () => {
-                showLoader('Loading...');
+                // Pass mocks directly. Cast to `any` or `unknown as HTMLElement | null` as MockHTMLElement is not a true HTMLElement.
+                showLoader('Loading...', mockedLoaderText as any, mockedLoaderOverlay as any);
                 // Assertions are made on our predefined mock objects
                 expect(mockedLoaderOverlay.classList.remove).toHaveBeenCalledWith('hidden');
                 expect(mockedLoaderText.textContent).toBe('Loading...');
@@ -145,7 +191,8 @@ describe('Utility Functions', () => {
 
         describe('hideLoader', () => {
             test('should hide loader', () => {
-                hideLoader();
+                // Pass mock directly
+                hideLoader(mockedLoaderOverlay as any);
                 expect(mockedLoaderOverlay.classList.add).toHaveBeenCalledWith('hidden');
             });
         });

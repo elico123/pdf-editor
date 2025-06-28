@@ -14,18 +14,19 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [16.x, 18.x, 20.x] # Test on common Node versions
+    # No longer using a matrix for Node.js versions
+    # strategy:
+    #   matrix:
+    #     node-version: [20.x] # Specify LTS version directly if matrix was only for Node versions
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4 # Updated to v4
 
-      - name: Set up Node.js ${{ matrix.node-version }}
+      - name: Set up Node.js
         uses: actions/setup-node@v4 # Updated to v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '20.x' # Use current LTS version
           cache: 'npm' # Or 'yarn' if you use yarn
 
       - name: Install dependencies
