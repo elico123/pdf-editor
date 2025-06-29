@@ -13,17 +13,37 @@ Object.defineProperty(navigator, 'clipboard', {
 });
 
 // These will be assigned fresh in beforeEach
-let domElements: any; // This will hold the mock object returned by initializeTestEnvironment
-let actualDebugModule: any;
+interface MockedDomElements {
+    debugOverlay: {
+        classList: {
+            contains: jest.Mock<() => boolean>;
+            toggle: jest.Mock<() => void>;
+            add: jest.Mock<() => void>;
+        }
+    };
+    debugMessagesContainer: {
+        innerHTML: string;
+        appendChild: jest.Mock<(newChild: Node) => Node>;
+        scrollTop: number;
+        scrollHeight: number;
+    };
+    debugClearBtn: { addEventListener: jest.Mock<(event: string, listener: () => void) => void> };
+    debugCloseBtn: { addEventListener: jest.Mock<(event: string, listener: () => void) => void> };
+    debugCopyBtn: { addEventListener: jest.Mock<(event: string, listener: () => void) => void> };
+    toggleDebugBtn: { addEventListener: jest.Mock<(event: string, listener: () => void) => void> };
+}
+
+let domElements: MockedDomElements;
+let actualDebugModule: typeof import('../js/debug.ts');
 
 
 // Helper to reset mocks and module state before each test
-const initializeTestEnvironment = async (): Promise<any> => { // Return type is the mock elements object
+const initializeTestEnvironment = async (): Promise<MockedDomElements> => {
     // Create the mock DOM elements structure for this specific test run.
-    const currentTestMockElements = {
+    const currentTestMockElements: MockedDomElements = {
         debugOverlay: {
             classList: {
-                contains: jest.fn().mockReturnValue(true), // Default to hidden
+                contains: jest.fn().mockReturnValue(true),
                 toggle: jest.fn(),
                 add: jest.fn(),
             }
@@ -47,13 +67,12 @@ const initializeTestEnvironment = async (): Promise<any> => { // Return type is 
 
     // Reset modules to get a fresh import of debug.ts
     jest.resetModules();
-    // actualDebugModule will be file-scoped, but assigned here for clarity of sequence
-    actualDebugModule = await import('../js/debug');
+    actualDebugModule = await import('../js/debug.ts');
 
     // Initialize the debug system with our fresh mock elements for this run
     actualDebugModule.initDebugSystem(currentTestMockElements);
 
-    return currentTestMockElements; // Return the mocks for the test to use
+    return currentTestMockElements;
 };
 
 // Helper to get a specific event listener from a mock
