@@ -151,24 +151,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
             const catalog = pdfDocInstance.catalog;
             const customDataValue = catalog.get(customDataKey);
-            let jsonData: string | null = null;
-
+            let parsedSuccessfully = false;
             if (customDataValue instanceof PDFHexString) {
                 logDebug("Found custom editor data as PDFHexString in catalog.");
                 const bytes = customDataValue.decode(); // Should return Uint8Array
-                jsonData = new TextDecoder('utf-8').decode(bytes);
+                const jsonData = new TextDecoder('utf-8').decode(bytes);
                 logDebug("Decoded PDFHexString data using UTF-8.", { dataLength: jsonData.length });
-            } else if (customDataValue instanceof PDFString) {
-                logDebug("Found custom editor data as PDFString in catalog (possibly older format).");
-                jsonData = customDataValue.asString(); // This might be PDFDocEncoding or UTF-16BE
-                logDebug("Decoded PDFString data.", { dataLength: jsonData.length });
-            }
-
-            if (jsonData) {
                 const savedData = JSON.parse(jsonData);
-                logDebug("Parsed editor data from catalog:", savedData);
+                logDebug("Parsed editor data from catalog (HexString):", savedData);
                 textObjects = savedData.textObjects || [];
                 redactionAreas = savedData.redactionAreas || [];
+                parsedSuccessfully = true;
+            } else if (customDataValue instanceof PDFString) {
+                logDebug("Found custom editor data as PDFString in catalog (possibly older format).");
+                const jsonData = customDataValue.asString(); // This might be PDFDocEncoding or UTF-16BE
+                logDebug("Decoded PDFString data.", { dataLength: jsonData.length });
+                const savedData = JSON.parse(jsonData);
+                logDebug("Parsed editor data from catalog (String):", savedData);
+                textObjects = savedData.textObjects || [];
+                redactionAreas = savedData.redactionAreas || [];
+                parsedSuccessfully = true;
+            }
+
+            if (parsedSuccessfully) {
                 logDebug("Loaded textObjects count: " + textObjects.length);
                 logDebug("Loaded redactionAreas count: " + redactionAreas.length);
             } else {
