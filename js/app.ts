@@ -156,18 +156,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 logDebug("Found custom editor data as PDFHexString in catalog.");
                 const bytes = customDataValue.decode(); // Should return Uint8Array
                 const jsonData = new TextDecoder('utf-8').decode(bytes);
-                logDebug("Decoded PDFHexString data using UTF-8.", { dataLength: jsonData.length });
+                logDebug("Decoded PDFHexString data using UTF-8 via decode().", { dataLength: jsonData.length });
                 const savedData = JSON.parse(jsonData);
                 logDebug("Parsed editor data from catalog (HexString):", savedData);
                 textObjects = savedData.textObjects || [];
                 redactionAreas = savedData.redactionAreas || [];
                 parsedSuccessfully = true;
             } else if (customDataValue instanceof PDFString) {
-                logDebug("Found custom editor data as PDFString in catalog (possibly older format).");
-                const jsonData = customDataValue.asString(); // This might be PDFDocEncoding or UTF-16BE
-                logDebug("Decoded PDFString data.", { dataLength: jsonData.length });
+                logDebug("Found custom editor data as PDFString in catalog.");
+                // Attempt to get raw bytes and decode as UTF-8, as asString() might misinterpret.
+                // This assumes PDFString objects from pdf-lib have a getBytes() method.
+                let jsonData: string;
+                try {
+                    // Cast to any to try getBytes(), as it might not be in the declared PDFString type
+                    // but could exist on the runtime object.
+                    const bytes = (customDataValue as any).getBytes();
+                    jsonData = new TextDecoder('utf-8').decode(bytes);
+                    logDebug("Decoded PDFString data using UTF-8 via getBytes().", { dataLength: jsonData.length });
+                } catch (e) {
+                    // Fallback to asString() if getBytes() fails or is not available,
+                    // though this is the path that might cause issues with some encodings.
+                    logDebug("Failed to getBytes() from PDFString, falling back to asString(). Error: " + (e as Error).message);
+                    jsonData = customDataValue.asString();
+                    logDebug("Decoded PDFString data using asString() (fallback).", { dataLength: jsonData.length });
+                }
                 const savedData = JSON.parse(jsonData);
-                logDebug("Parsed editor data from catalog (String):", savedData);
+                logDebug("Parsed editor data from catalog (String path):", savedData);
                 textObjects = savedData.textObjects || [];
                 redactionAreas = savedData.redactionAreas || [];
                 parsedSuccessfully = true;
@@ -176,8 +190,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (parsedSuccessfully) {
                 logDebug("Loaded textObjects count: " + textObjects.length);
                 logDebug("Loaded redactionAreas count: " + redactionAreas.length);
+            } else if (customDataValue) {
+                // If customDataValue exists but wasn't parsed, log its type.
+                // This helps if it's neither PDFHexString nor PDFString.
+                logDebug("Custom editor data found, but it was not an instance of PDFHexString or PDFString.", { retrievedObjectType: customDataValue.constructor.name });
             } else {
-                logDebug("No custom editor data found in catalog or not a recognized string/hexstring type.", { retrievedObjectType: customDataValue ? customDataValue.constructor.name : 'undefined' });
+                logDebug("No custom editor data found in catalog.");
             }
          } catch (e: any) { // Explicitly type 'e' as any
              console.error("Failed to load or parse editor data from custom catalog entry:", e);
