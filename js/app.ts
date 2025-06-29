@@ -151,10 +151,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
             const catalog = pdfDocInstance.catalog;
             const customDataValue = catalog.get(customDataKey);
+            let jsonData: string | null = null;
 
-            if (customDataValue instanceof PDFString || customDataValue instanceof PDFHexString) {
-                const jsonData = (customDataValue instanceof PDFString) ? customDataValue.asString() : customDataValue.decodeText();
-                logDebug("Found custom editor data in catalog.", { dataLength: jsonData.length });
+            if (customDataValue instanceof PDFHexString) {
+                logDebug("Found custom editor data as PDFHexString in catalog.");
+                const bytes = customDataValue.decode(); // Should return Uint8Array
+                jsonData = new TextDecoder('utf-8').decode(bytes);
+                logDebug("Decoded PDFHexString data using UTF-8.", { dataLength: jsonData.length });
+            } else if (customDataValue instanceof PDFString) {
+                logDebug("Found custom editor data as PDFString in catalog (possibly older format).");
+                jsonData = customDataValue.asString(); // This might be PDFDocEncoding or UTF-16BE
+                logDebug("Decoded PDFString data.", { dataLength: jsonData.length });
+            }
+
+            if (jsonData) {
                 const savedData = JSON.parse(jsonData);
                 logDebug("Parsed editor data from catalog:", savedData);
                 textObjects = savedData.textObjects || [];
@@ -162,11 +172,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 logDebug("Loaded textObjects count: " + textObjects.length);
                 logDebug("Loaded redactionAreas count: " + redactionAreas.length);
             } else {
-                logDebug("No custom editor data found in catalog or not a string type.", { retrievedObjectType: customDataValue ? customDataValue.constructor.name : 'undefined' });
+                logDebug("No custom editor data found in catalog or not a recognized string/hexstring type.", { retrievedObjectType: customDataValue ? customDataValue.constructor.name : 'undefined' });
             }
          } catch (e: any) { // Explicitly type 'e' as any
              console.error("Failed to load or parse editor data from custom catalog entry:", e);
-             logDebug("Error loading from custom catalog entry. textObjects and redactionAreas remain empty.", { error: e.message, stack: e.stack });
+             logDebug("Error loading/parsing from custom catalog entry. textObjects and redactionAreas remain empty.", { error: e.message, stack: e.stack });
          }
 
         pageOrder = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
@@ -268,10 +278,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const dataToStore = JSON.stringify({ textObjects, redactionAreas });
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
-            const customDataValue = PDFString.of(dataToStore);
+
+            // Encode the JSON string to UTF-8 bytes
+            const utf8Bytes = new TextEncoder().encode(dataToStore);
+            // Store as a PDFHexString
+            const customDataValue = PDFHexString.of(utf8Bytes);
 
             finalDoc.catalog.set(customDataKey, customDataValue);
-            logDebug("performStandardSave: Set custom data in PDF catalog.", { key: customDataKey.toString(), dataLength: dataToStore.length });
+            logDebug("performStandardSave: Set custom data (UTF-8 as PDFHexString) in PDF catalog.", { key: customDataKey.toString(), dataLength: utf8Bytes.length });
 
             const finalPdfBytes: Uint8Array = await finalDoc.save();
             const originalFileName = (dom.fileInput?.files?.[0]?.name || 'document.pdf').replace(/\.pdf$/i, '');
