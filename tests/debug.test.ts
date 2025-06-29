@@ -15,32 +15,51 @@ Object.defineProperty(navigator, 'clipboard', {
 // These will be assigned fresh in beforeEach
 import type { DebugElements } from '../js/debug.ts'; // Import the type from the source
 
-let domElements: DebugElements; // Use the imported DebugElements type
+// Define a more precise type for our mocks to be used within the test file.
+// This ensures that properties like 'classList' are known to exist and are not null.
+type MockHTMLElement = Omit<HTMLElement, 'classList'> & { classList: { contains: jest.Mock<() => boolean>, toggle: jest.Mock<() => void>, add: jest.Mock<() => void> } };
+type MockHTMLMessagesContainer = Omit<HTMLElement, 'appendChild' | 'innerHTML' | 'scrollTop' | 'scrollHeight'> & {
+    innerHTML: string,
+    appendChild: jest.Mock<(newChild: Node) => Node>,
+    scrollTop: number,
+    scrollHeight: number
+};
+type MockHTMLButtonElement = Omit<HTMLButtonElement, 'addEventListener'> & { addEventListener: jest.Mock<(event: string, listener: (...args: any[]) => void) => void> };
+
+interface TestSpecificMockedDomElements {
+    debugOverlay: MockHTMLElement;
+    debugMessagesContainer: MockHTMLMessagesContainer;
+    debugClearBtn: MockHTMLButtonElement;
+    debugCloseBtn: MockHTMLButtonElement;
+    debugCopyBtn: MockHTMLButtonElement;
+    toggleDebugBtn: MockHTMLButtonElement;
+}
+
+let domElements: TestSpecificMockedDomElements;
 let actualDebugModule: typeof import('../js/debug.ts');
 
 
 // Helper to reset mocks and module state before each test
-const initializeTestEnvironment = async (): Promise<DebugElements> => {
+const initializeTestEnvironment = async (): Promise<TestSpecificMockedDomElements> => {
     // Create the mock DOM elements structure for this specific test run.
-    // Cast individual properties to make them compatible with HTMLElement/HTMLButtonElement.
-    const currentTestMockElements = {
+    const currentTestMockElements: TestSpecificMockedDomElements = {
         debugOverlay: {
             classList: {
                 contains: jest.fn<() => boolean>().mockReturnValue(true),
                 toggle: jest.fn<() => void>(),
                 add: jest.fn<() => void>(),
             }
-        } as unknown as HTMLElement,
+        } as TestSpecificMockedDomElements['debugOverlay'],
         debugMessagesContainer: {
             innerHTML: '',
             appendChild: jest.fn<(newChild: Node) => Node>(),
             scrollTop: 0,
             scrollHeight: 0,
-        } as unknown as HTMLElement,
-        debugClearBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as unknown as HTMLButtonElement,
-        debugCloseBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as unknown as HTMLButtonElement,
-        debugCopyBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as unknown as HTMLButtonElement,
-        toggleDebugBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as unknown as HTMLButtonElement,
+        } as TestSpecificMockedDomElements['debugMessagesContainer'],
+        debugClearBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as TestSpecificMockedDomElements['debugClearBtn'],
+        debugCloseBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as TestSpecificMockedDomElements['debugCloseBtn'],
+        debugCopyBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as TestSpecificMockedDomElements['debugCopyBtn'],
+        toggleDebugBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as TestSpecificMockedDomElements['toggleDebugBtn'],
     };
 
     // Reset clipboard mock (global)
