@@ -268,7 +268,8 @@ describe('Debug Module', () => {
 
             (navigator.clipboard.writeText as jest.Mock).mockClear();
             (domElements.debugMessagesContainer.appendChild as jest.Mock).mockClear(); // Clear for next logDebug call
-            (domElements.debugOverlay.classList.contains as jest.Mock).mockReturnValue(false); // Open overlay for next log
+            // Use mockImplementation for robustness in CI
+            (domElements.debugOverlay.classList.contains as jest.Mock).mockImplementation(() => false); // Open overlay for next log
 
             if (copyListener) copyListener();
             // appendChild is called for "Log copied to clipboard."
@@ -294,11 +295,14 @@ describe('Debug Module', () => {
         });
 
         it('should log error if clipboard write fails', async () => {
-            (domElements.debugOverlay.classList.contains as jest.Mock).mockReturnValue(false); // Open overlay for logDebug
+            // Use mockImplementation for robustness in CI
+            (domElements.debugOverlay.classList.contains as jest.Mock).mockImplementation(() => false); // Open overlay for logDebug
             (navigator.clipboard.writeText as jest.Mock).mockRejectedValueOnce(new Error('Clipboard error'));
-            actualDebugModule.logDebug('Message that will fail to copy'); // This will call appendChild once
 
-            (domElements.debugMessagesContainer.appendChild as jest.Mock).mockClear(); // Clear for the next logDebug call from copyDebugLog
+            // This first logDebug is just to populate loggedMessages, its appendChild isn't the focus.
+            actualDebugModule.logDebug('Message that will fail to copy');
+
+            (domElements.debugMessagesContainer.appendChild as jest.Mock).mockClear(); // Clear for the specific logDebug call from copyDebugLog
 
             const copyListener = getListener(domElements.debugCopyBtn, 'click');
             if (copyListener) {
