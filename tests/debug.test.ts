@@ -6,7 +6,7 @@ import { jest } from '@jest/globals';
 // Mock navigator.clipboard
 Object.defineProperty(navigator, 'clipboard', {
     value: {
-        writeText: jest.fn().mockResolvedValue(undefined),
+        writeText: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
     },
     writable: true,
     configurable: true,
@@ -24,7 +24,7 @@ type MockHTMLMessagesContainer = Omit<HTMLElement, 'appendChild' | 'innerHTML' |
     scrollTop: number,
     scrollHeight: number
 };
-type MockHTMLButtonElement = Omit<HTMLButtonElement, 'addEventListener'> & { addEventListener: jest.Mock<(event: string, listener: (...args: any[]) => void) => void> };
+type MockHTMLButtonElement = Omit<HTMLButtonElement, 'addEventListener'> & { addEventListener: jest.Mock }; // Made jest.Mock generic
 
 interface TestSpecificMockedDomElements {
     debugOverlay: MockHTMLElement;
@@ -64,7 +64,8 @@ const initializeTestEnvironment = async (): Promise<TestSpecificMockedDomElement
 
     // Reset clipboard mock (global)
     if (navigator.clipboard && typeof (navigator.clipboard.writeText as jest.Mock).mockReset === 'function') {
-        (navigator.clipboard.writeText as jest.Mock).mockReset().mockResolvedValue(undefined);
+        // Ensure the mock implementation is also correctly typed if needed, though mockReset usually handles this.
+        (navigator.clipboard.writeText as jest.Mock<() => Promise<void>>).mockReset().mockResolvedValue(undefined);
     }
 
     // Reset modules to get a fresh import of debug.ts
@@ -72,7 +73,7 @@ const initializeTestEnvironment = async (): Promise<TestSpecificMockedDomElement
     actualDebugModule = await import('../js/debug.ts');
 
     // Initialize the debug system with our fresh mock elements for this run
-    actualDebugModule.initDebugSystem(currentTestMockElements);
+    actualDebugModule.initDebugSystem(currentTestMockElements as unknown as DebugElements);
 
     return currentTestMockElements;
 };
@@ -102,11 +103,11 @@ describe('Debug Module', () => {
             actualDebugModule.logDebug('Test message visible');
 
             expect(domElements.debugMessagesContainer.appendChild).toHaveBeenCalledTimes(1);
-            const callHtml = (domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0].innerHTML;
-            expect(callHtml).toContain('Test message visible');
+            const appendedNode = (domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0] as HTMLElement;
+            expect(appendedNode.innerHTML).toContain('Test message visible');
 
             const copyListener = getListener(domElements.debugCopyBtn, 'click');
-            if (copyListener) copyListener(); // This will log, affecting next check if not careful
+            if (typeof copyListener === 'function') copyListener(); // This will log, affecting next check if not careful
             // To check storage more directly, we'd need to export loggedMessages or test via UI interaction
         });
 
@@ -120,7 +121,7 @@ describe('Debug Module', () => {
             // Verify it's stored by trying to copy it
             (navigator.clipboard.writeText as jest.Mock).mockClear(); // Clear before copy action
             const copyListener = getListener(domElements.debugCopyBtn, 'click');
-            if (copyListener) copyListener();
+            if (typeof copyListener === 'function') copyListener();
             expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('Test message hidden'));
         });
 
@@ -129,18 +130,18 @@ describe('Debug Module', () => {
             if (!domElements.debugMessagesContainer) throw new Error("debugMessagesContainer missing for test");
 
             actualDebugModule.logDebug('Error test', undefined, 'error');
-            expect((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0].innerHTML).toContain('ERROR: Error test');
+            expect(((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0] as HTMLElement).innerHTML).toContain('ERROR: Error test');
 
             actualDebugModule.logDebug('Warn test', undefined, 'warn');
-            expect((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[1][0].innerHTML).toContain('WARN: Warn test');
+            expect(((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[1][0] as HTMLElement).innerHTML).toContain('WARN: Warn test');
 
             actualDebugModule.logDebug('Info test', undefined, 'info');
-            expect((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[2][0].innerHTML).toContain('INFO: Info test');
+            expect(((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[2][0] as HTMLElement).innerHTML).toContain('INFO: Info test');
 
             actualDebugModule.logDebug('Log test', undefined, 'log');
-            const lastCallHtml = (domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[3][0].innerHTML;
-            expect(lastCallHtml).not.toMatch(/ERROR:|WARN:|INFO:/);
-            expect(lastCallHtml).toContain('Log test');
+            const lastAppendedNode = (domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[3][0] as HTMLElement;
+            expect(lastAppendedNode.innerHTML).not.toMatch(/ERROR:|WARN:|INFO:/);
+            expect(lastAppendedNode.innerHTML).toContain('Log test');
         });
 
         it('should include stringified data when data is provided and view is open', () => {
@@ -149,7 +150,7 @@ describe('Debug Module', () => {
             const data = { key: 'value', num: 123 };
             actualDebugModule.logDebug('Data test', data);
 
-            const msgDiv = (domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0];
+            const msgDiv = (domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0] as HTMLElement;
             expect(msgDiv.innerHTML).toContain('Data test');
             const preElement = msgDiv.querySelector('pre');
             expect(preElement).not.toBeNull();
@@ -163,7 +164,7 @@ describe('Debug Module', () => {
             circularData.self = circularData;
             actualDebugModule.logDebug('Circular data test', circularData);
 
-            const msgDiv = (domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0];
+            const msgDiv = (domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0] as HTMLElement;
             expect(msgDiv.textContent).toContain('[Unserializable data: ');
         });
     });
@@ -177,7 +178,7 @@ describe('Debug Module', () => {
         it('console.log should store message with type log', () => {
             console.log('Hello', 'Console');
             const copyListener = getListener(domElements.debugCopyBtn, 'click');
-            if (copyListener) copyListener();
+            if (typeof copyListener === 'function') copyListener();
             const copiedText = (navigator.clipboard.writeText as jest.Mock).mock.calls[0][0];
             expect(copiedText).toContain('Hello Console');
             expect(copiedText).not.toMatch(/ERROR:|WARN:|INFO:/);
@@ -186,7 +187,7 @@ describe('Debug Module', () => {
         it('console.error should store message with type error', () => {
             console.error('Console Error', { e: 1 });
             const copyListener = getListener(domElements.debugCopyBtn, 'click');
-            if (copyListener) copyListener();
+            if (typeof copyListener === 'function') copyListener();
             const copiedText = (navigator.clipboard.writeText as jest.Mock).mock.calls[0][0];
             expect(copiedText).toContain('ERROR: Console Error [object Object]');
         });
@@ -194,7 +195,7 @@ describe('Debug Module', () => {
         it('console.warn should store message with type warn', () => {
             console.warn('Console Warn');
             const copyListener = getListener(domElements.debugCopyBtn, 'click');
-            if (copyListener) copyListener();
+            if (typeof copyListener === 'function') copyListener();
             const copiedText = (navigator.clipboard.writeText as jest.Mock).mock.calls[0][0];
             expect(copiedText).toContain('WARN: Console Warn');
         });
@@ -202,7 +203,7 @@ describe('Debug Module', () => {
         it('console.info should store message with type info', () => {
             console.info('Console Info');
             const copyListener = getListener(domElements.debugCopyBtn, 'click');
-            if (copyListener) copyListener();
+            if (typeof copyListener === 'function') copyListener();
             const copiedText = (navigator.clipboard.writeText as jest.Mock).mock.calls[0][0];
             expect(copiedText).toContain('INFO: Console Info');
         });
@@ -221,7 +222,7 @@ describe('Debug Module', () => {
             (domElements.debugMessagesContainer.appendChild as jest.Mock).mockClear();
 
             const toggleListener = getListener(domElements.toggleDebugBtn, 'click');
-            if (toggleListener) {
+            if (typeof toggleListener === 'function') {
                 toggleListener();
             } else {
                 throw new Error("Toggle listener not found for test");
@@ -229,10 +230,10 @@ describe('Debug Module', () => {
 
             expect(domElements.debugMessagesContainer.innerHTML).toBe('');
             expect(domElements.debugMessagesContainer.appendChild).toHaveBeenCalledTimes(3);
-            expect((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0].innerHTML).toContain('Msg 1 before open');
-            expect((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[1][0].innerHTML).toContain('Msg 2 before open');
-            expect((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[1][0].textContent).toContain('yes');
-            expect((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[2][0].innerHTML).toContain('Debug view opened.');
+            expect(((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0] as HTMLElement).innerHTML).toContain('Msg 1 before open');
+            expect(((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[1][0] as HTMLElement).innerHTML).toContain('Msg 2 before open');
+            expect(((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[1][0] as HTMLElement).textContent).toContain('yes');
+            expect(((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[2][0] as HTMLElement).innerHTML).toContain('Debug view opened.');
         });
     });
 
@@ -245,7 +246,7 @@ describe('Debug Module', () => {
             (domElements.debugMessagesContainer.appendChild as jest.Mock).mockClear(); // Clear calls from initial logDebug
 
             const clearListener = getListener(domElements.debugClearBtn, 'click');
-            if (clearListener) {
+            if (typeof clearListener === 'function') {
                 clearListener();
             } else {
                 throw new Error("Clear listener not found for test");
@@ -254,11 +255,14 @@ describe('Debug Module', () => {
             expect(domElements.debugMessagesContainer.innerHTML).toBe('');
             // appendChild is called once for "Debug log cleared."
             expect(domElements.debugMessagesContainer.appendChild).toHaveBeenCalledTimes(1);
-            expect((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0].innerHTML).toContain('Debug log cleared.');
+            expect(((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0] as HTMLElement).innerHTML).toContain('Debug log cleared.');
 
             (navigator.clipboard.writeText as jest.Mock).mockClear();
-            const copyListener = getListener(domElements.debugCopyBtn, 'click');
-            if (copyListener) copyListener(); // This will attempt to copy the "Debug log cleared." message
+            const listenerCandidate = getListener(domElements.debugCopyBtn, 'click');
+            if (typeof listenerCandidate === 'function') {
+                const copyListener = listenerCandidate as (...args: any[]) => void;
+                copyListener(); // This will attempt to copy the "Debug log cleared." message
+            }
             expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("Debug log cleared."));
             // Ensure the original message isn't there
             const textCopied = (navigator.clipboard.writeText as jest.Mock).mock.calls[0][0];
@@ -278,7 +282,7 @@ describe('Debug Module', () => {
             (domElements.debugOverlay.classList.contains as jest.Mock).mockReturnValue(false); // Open overlay for logDebug
 
             const copyListener = getListener(domElements.debugCopyBtn, 'click');
-            if (copyListener) {
+            if (typeof copyListener === 'function') {
                 copyListener();
             } else {
                 throw new Error("Copy listener not found for test");
@@ -286,7 +290,7 @@ describe('Debug Module', () => {
             expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
 
             expect(domElements.debugMessagesContainer.appendChild).toHaveBeenCalledTimes(1);
-            expect((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0].innerHTML).toContain('Nothing to copy from debug log.');
+            expect(((domElements.debugMessagesContainer.appendChild as jest.Mock).mock.calls[0][0] as HTMLElement).innerHTML).toContain('Nothing to copy from debug log.');
         });
     });
 });
