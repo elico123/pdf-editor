@@ -44,6 +44,12 @@ const config = {
   // Preset for TypeScript
   preset: 'ts-jest',
 
+  // Module name mapper to resolve .js extensions to .ts files for ts-jest
+  // when moduleResolution is node16/nodenext
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
+
   // Jest's default resolver does not support export maps.
   // If you encounter issues with imports from packages that use export maps (like uuid),
   // you might need a custom resolver or to adjust your Node version/flags.

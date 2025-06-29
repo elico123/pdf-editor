@@ -88,7 +88,7 @@ export function parsePdfCustomData(
         }
     } catch (e: any) {
         console.error("parsePdfCustomData: Error parsing custom data JSON.", e);
-        logDebug("parsePdfCustomData: Error parsing custom data JSON.", { error: e.message, stack: e.stack, jsonDataReceived: jsonData });
+        logDebug("parsePdfCustomData: Error parsing custom data JSON.", { error: e.message, stack: e.stack, jsonDataReceived: jsonData ?? 'unavailable (error before assignment or during parsing)' });
         return null;
     }
 

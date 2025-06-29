@@ -31,8 +31,8 @@ describe('parsePdfCustomData', () => {
             initDebugSystem: jest.fn(),
         }));
 
-        // Dynamically import here to ensure it gets fresh mocks
-        const pdfMetadataModule = await import('../js/pdfMetadata');
+        // Dynamically import here to ensure it gets fresh mocks, using .js extension
+        const pdfMetadataModule = await import('../js/pdfMetadata.js');
         parsePdfCustomData = pdfMetadataModule.parsePdfCustomData;
 
         // These are mock constructors. The instances created by them will be checked by 'instanceof'.
