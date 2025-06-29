@@ -3,8 +3,9 @@
 import { EDITOR_METADATA_KEY } from './config.ts';
 import * as dom from './domElements.ts';
 import * as utils from './utils.ts';
-import { logDebug, initDebugSystem } from './debug.ts'; // Import initDebugSystem
+import { logDebug, initDebugSystem } from './debug.ts';
 import * as pdfLibCore from './pdfSetup.ts';
+import { parsePdfCustomData } from './pdfMetadata.ts'; // Import the new function
 
 // Explicitly type PDFDocumentConstructors from pdf-lib
 // This helps in typing pdfDocInstance correctly later.
@@ -151,37 +152,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
             const catalog = pdfDocInstance.catalog;
             const customDataValue = catalog.get(customDataKey);
-            let parsedSuccessfully = false;
-            if (customDataValue instanceof PDFHexString) {
-                logDebug("Found custom editor data as PDFHexString in catalog.");
-                const bytes = customDataValue.decode(); // Should return Uint8Array
-                const jsonData = new TextDecoder('utf-8').decode(bytes);
-                logDebug("Decoded PDFHexString data using UTF-8.", { dataLength: jsonData.length });
-                const savedData = JSON.parse(jsonData);
-                logDebug("Parsed editor data from catalog (HexString):", savedData);
-                textObjects = savedData.textObjects || [];
-                redactionAreas = savedData.redactionAreas || [];
-                parsedSuccessfully = true;
-            } else if (customDataValue instanceof PDFString) {
-                logDebug("Found custom editor data as PDFString in catalog (possibly older format).");
-                const jsonData = customDataValue.asString(); // This might be PDFDocEncoding or UTF-16BE
-                logDebug("Decoded PDFString data.", { dataLength: jsonData.length });
-                const savedData = JSON.parse(jsonData);
-                logDebug("Parsed editor data from catalog (String):", savedData);
-                textObjects = savedData.textObjects || [];
-                redactionAreas = savedData.redactionAreas || [];
-                parsedSuccessfully = true;
-            }
 
-            if (parsedSuccessfully) {
-                logDebug("Loaded textObjects count: " + textObjects.length);
-                logDebug("Loaded redactionAreas count: " + redactionAreas.length);
+            if (customDataValue) {
+                logDebug("loadPdfFromBytes: Attempting to parse custom data from catalog.", { key: EDITOR_METADATA_KEY });
+                const parsedData = parsePdfCustomData(customDataValue, PDFHexString, PDFString);
+                if (parsedData) {
+                    textObjects = parsedData.textObjects;
+                    redactionAreas = parsedData.redactionAreas;
+                    logDebug("loadPdfFromBytes: Successfully parsed and loaded custom editor data.", { textObjectsCount: textObjects.length, redactionAreasCount: redactionAreas.length });
+                } else {
+                    logDebug("loadPdfFromBytes: Failed to parse custom editor data or data was invalid/empty.");
+                    // textObjects and redactionAreas remain in their default empty state
+                }
             } else {
-                logDebug("No custom editor data found in catalog or not a recognized string/hexstring type.", { retrievedObjectType: customDataValue ? customDataValue.constructor.name : 'undefined' });
+                logDebug("loadPdfFromBytes: No custom editor data found in catalog with key: " + EDITOR_METADATA_KEY);
             }
-         } catch (e: any) { // Explicitly type 'e' as any
-             console.error("Failed to load or parse editor data from custom catalog entry:", e);
-             logDebug("Error loading/parsing from custom catalog entry. textObjects and redactionAreas remain empty.", { error: e.message, stack: e.stack });
+         } catch (e: any) {
+             console.error("loadPdfFromBytes: Error processing custom catalog entry:", e);
+             logDebug("loadPdfFromBytes: Error processing custom catalog entry. textObjects and redactionAreas remain empty.", { error: e.message, stack: e.stack });
          }
 
         pageOrder = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
