@@ -38,6 +38,7 @@ export const debugOverlay: HTMLElement | null = document.getElementById('debug-o
 export const debugMessagesContainer: HTMLElement | null = document.getElementById('debug-messages');
 export const debugClearBtn: HTMLButtonElement | null = document.getElementById('debug-clear-btn') as HTMLButtonElement | null;
 export const debugCloseBtn: HTMLButtonElement | null = document.getElementById('debug-close-btn') as HTMLButtonElement | null;
+export const debugCopyBtn = document.getElementById('debug-copy-btn') as HTMLButtonElement | null;
 export const toggleDebugBtn: HTMLButtonElement | null = document.getElementById('toggle-debug-btn') as HTMLButtonElement | null;
 
 // Action buttons array (for enabling/disabling) - Note: these are the elements themselves
