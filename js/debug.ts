@@ -8,7 +8,7 @@ let internalDebugCloseBtn: HTMLButtonElement | null = null;
 let internalDebugCopyBtn: HTMLButtonElement | null = null;
 let internalToggleDebugBtn: HTMLButtonElement | null = null;
 
-interface DebugElements {
+export interface DebugElements { // Added export
     debugOverlay: HTMLElement | null;
     debugMessagesContainer: HTMLElement | null;
     debugClearBtn: HTMLButtonElement | null;

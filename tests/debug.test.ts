@@ -15,41 +15,32 @@ Object.defineProperty(navigator, 'clipboard', {
 // These will be assigned fresh in beforeEach
 import type { DebugElements } from '../js/debug.ts'; // Import the type from the source
 
-// This interface describes the shape of our mock, ensuring jest.fn() are correctly typed.
-interface TestMockedDomElements {
-    debugOverlay: { classList: { contains: jest.Mock<() => boolean>, toggle: jest.Mock<() => void>, add: jest.Mock<() => void> } } & Partial<HTMLElement>;
-    debugMessagesContainer: { innerHTML: string, appendChild: jest.Mock<(newChild: Node) => Node>, scrollTop: number, scrollHeight: number } & Partial<HTMLElement>;
-    debugClearBtn: { addEventListener: jest.Mock<(event: string, listener: () => void) => void> } & Partial<HTMLButtonElement>;
-    debugCloseBtn: { addEventListener: jest.Mock<(event: string, listener: () => void) => void> } & Partial<HTMLButtonElement>;
-    debugCopyBtn: { addEventListener: jest.Mock<(event: string, listener: () => void) => void> } & Partial<HTMLButtonElement>;
-    toggleDebugBtn: { addEventListener: jest.Mock<(event: string, listener: () => void) => void> } & Partial<HTMLButtonElement>;
-}
-
-let domElements: TestMockedDomElements;
+let domElements: DebugElements; // Use the imported DebugElements type
 let actualDebugModule: typeof import('../js/debug.ts');
 
 
 // Helper to reset mocks and module state before each test
-const initializeTestEnvironment = async (): Promise<TestMockedDomElements> => {
+const initializeTestEnvironment = async (): Promise<DebugElements> => {
     // Create the mock DOM elements structure for this specific test run.
-    const currentTestMockElements: TestMockedDomElements = {
+    // Cast individual properties to make them compatible with HTMLElement/HTMLButtonElement.
+    const currentTestMockElements = {
         debugOverlay: {
             classList: {
                 contains: jest.fn<() => boolean>().mockReturnValue(true),
                 toggle: jest.fn<() => void>(),
                 add: jest.fn<() => void>(),
             }
-        } as TestMockedDomElements['debugOverlay'], // Cast to satisfy the extended & partial type
+        } as unknown as HTMLElement,
         debugMessagesContainer: {
             innerHTML: '',
             appendChild: jest.fn<(newChild: Node) => Node>(),
             scrollTop: 0,
             scrollHeight: 0,
-        } as TestMockedDomElements['debugMessagesContainer'],
-        debugClearBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as TestMockedDomElements['debugClearBtn'],
-        debugCloseBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as TestMockedDomElements['debugCloseBtn'],
-        debugCopyBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as TestMockedDomElements['debugCopyBtn'],
-        toggleDebugBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as TestMockedDomElements['toggleDebugBtn'],
+        } as unknown as HTMLElement,
+        debugClearBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as unknown as HTMLButtonElement,
+        debugCloseBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as unknown as HTMLButtonElement,
+        debugCopyBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as unknown as HTMLButtonElement,
+        toggleDebugBtn: { addEventListener: jest.fn<(event: string, listener: () => void) => void>() } as unknown as HTMLButtonElement,
     };
 
     // Reset clipboard mock (global)
@@ -62,8 +53,7 @@ const initializeTestEnvironment = async (): Promise<TestMockedDomElements> => {
     actualDebugModule = await import('../js/debug.ts');
 
     // Initialize the debug system with our fresh mock elements for this run
-    // Cast to DebugElements to satisfy the initDebugSystem parameter type.
-    actualDebugModule.initDebugSystem(currentTestMockElements as unknown as DebugElements);
+    actualDebugModule.initDebugSystem(currentTestMockElements);
 
     return currentTestMockElements;
 };
