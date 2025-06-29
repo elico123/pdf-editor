@@ -1,8 +1,9 @@
 // js/app.ts
+// js/app.ts
 import { EDITOR_METADATA_KEY } from './config.ts';
 import * as dom from './domElements.ts';
 import * as utils from './utils.ts';
-import { logDebug } from './debug.ts';
+import { logDebug, initDebugSystem } from './debug.ts'; // Import initDebugSystem
 import * as pdfLibCore from './pdfSetup.ts';
 
 // Explicitly type PDFDocumentConstructors from pdf-lib
@@ -41,6 +42,18 @@ interface TextObject {
 // they would need a consolidated global declaration. For now, assuming pdfSetup.ts handles PDFLib/pdfjsLib globals.
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize the debug system with necessary DOM elements
+    initDebugSystem({
+        debugOverlay: dom.debugOverlay,
+        debugMessagesContainer: dom.debugMessagesContainer,
+        debugClearBtn: dom.debugClearBtn,
+        debugCloseBtn: dom.debugCloseBtn,
+        debugCopyBtn: dom.debugCopyBtn,
+        toggleDebugBtn: dom.toggleDebugBtn,
+    });
+    logDebug("Debug system initialized via app.ts");
+
+
     // Re-alias pdfLibCore objects for convenience if needed, or use pdfLibCore.PDFDocument etc.
     // These will need types from the imported module. For now, some might be `any`.
     const { PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale }: any = pdfLibCore;
