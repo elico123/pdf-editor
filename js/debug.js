@@ -1,32 +1,39 @@
-// js/debug.ts
+// js/debug.js
 
 // Module-scoped variables to hold references to DOM elements, set by initDebugSystem
-let internalDebugOverlay: HTMLElement | null = null;
-let internalDebugMessagesContainer: HTMLElement | null = null;
-let internalDebugClearBtn: HTMLButtonElement | null = null;
-let internalDebugCloseBtn: HTMLButtonElement | null = null;
-let internalDebugCopyBtn: HTMLButtonElement | null = null;
-let internalToggleDebugBtn: HTMLButtonElement | null = null;
+let internalDebugOverlay = null;
+let internalDebugMessagesContainer = null;
+let internalDebugClearBtn = null;
+let internalDebugCloseBtn = null;
+let internalDebugCopyBtn = null;
+let internalToggleDebugBtn = null;
 
-export interface DebugElements { // Added export
-    debugOverlay: HTMLElement | null;
-    debugMessagesContainer: HTMLElement | null;
-    debugClearBtn: HTMLButtonElement | null;
-    debugCloseBtn: HTMLButtonElement | null;
-    debugCopyBtn: HTMLButtonElement | null;
-    toggleDebugBtn: HTMLButtonElement | null;
-}
+/**
+ * @typedef {object} DebugElements
+ * @property {HTMLElement | null} debugOverlay
+ * @property {HTMLElement | null} debugMessagesContainer
+ * @property {HTMLButtonElement | null} debugClearBtn
+ * @property {HTMLButtonElement | null} debugCloseBtn
+ * @property {HTMLButtonElement | null} debugCopyBtn
+ * @property {HTMLButtonElement | null} toggleDebugBtn
+ */
 
-interface LoggedMessage {
-    timestamp: string;
-    message: string;
-    data?: any;
-    type: 'log' | 'error' | 'warn' | 'info';
-}
+/**
+ * @typedef {object} LoggedMessage
+ * @property {string} timestamp
+ * @property {string} message
+ * @property {any} [data]
+ * @property {'log' | 'error' | 'warn' | 'info'} type
+ */
 
-const loggedMessages: LoggedMessage[] = [];
+/** @type {LoggedMessage[]} */
+const loggedMessages = [];
 
-const appendMessageToDebugView = (logEntry: LoggedMessage): void => {
+/**
+ * @param {LoggedMessage} logEntry
+ * @returns {void}
+ */
+const appendMessageToDebugView = (logEntry) => {
     if (!internalDebugMessagesContainer) return;
 
     const msgDiv = document.createElement('div');
@@ -38,7 +45,7 @@ const appendMessageToDebugView = (logEntry: LoggedMessage): void => {
     msgDiv.innerHTML = `<strong>[${logEntry.timestamp}]</strong> ${displayMessage}`;
     if (logEntry.data !== undefined) {
         try {
-            const prettyData: string = JSON.stringify(logEntry.data, null, 2);
+            const prettyData = JSON.stringify(logEntry.data, null, 2);
             const dataPre = document.createElement('pre');
             dataPre.textContent = prettyData;
             dataPre.style.marginLeft = '10px';
@@ -46,7 +53,7 @@ const appendMessageToDebugView = (logEntry: LoggedMessage): void => {
             dataPre.style.backgroundColor = 'rgba(255,255,255,0.1)';
             dataPre.style.borderRadius = '3px';
             msgDiv.appendChild(dataPre);
-        } catch (e: any) {
+        } catch (e) {
             const dataDiv = document.createElement('div');
             dataDiv.textContent = `[Unserializable data: ${e.message}]`;
             dataDiv.style.marginLeft = '10px';
@@ -57,42 +64,38 @@ const appendMessageToDebugView = (logEntry: LoggedMessage): void => {
     internalDebugMessagesContainer.scrollTop = internalDebugMessagesContainer.scrollHeight;
 };
 
-export const logDebug = (message: string, data?: any, type: LoggedMessage['type'] = 'log'): void => {
-    const timestamp: string = new Date().toLocaleTimeString();
-    const logEntry: LoggedMessage = { timestamp, message, data, type };
+/**
+ * @param {string} message
+ * @param {any} [data]
+ * @param {'log' | 'error' | 'warn' | 'info'} [type='log']
+ * @returns {void}
+ */
+export const logDebug = (message, data, type = 'log') => {
+    const timestamp = new Date().toLocaleTimeString();
+    /** @type {LoggedMessage} */
+    const logEntry = { timestamp, message, data, type };
     loggedMessages.push(logEntry);
 
-    // For test debugging - use originalConsoleLog to avoid recursion
-    // originalConsoleLog('[debug.ts] logDebug called. Message:', message);
-    // originalConsoleLog('[debug.ts] logDebug: internalDebugOverlay defined?', !!internalDebugOverlay);
-    // if (internalDebugOverlay) {
-    //     originalConsoleLog('[debug.ts] logDebug: overlay hidden?', internalDebugOverlay.classList.contains('hidden'));
-    // }
-    // originalConsoleLog('[debug.ts] logDebug: internalDebugMessagesContainer defined?', !!internalDebugMessagesContainer);
-
-
     if (internalDebugOverlay && !internalDebugOverlay.classList.contains('hidden') && internalDebugMessagesContainer) {
-        // originalConsoleLog('[debug.ts] logDebug: Condition to append is TRUE. Calling appendMessageToDebugView for:', message);
         appendMessageToDebugView(logEntry);
-    } else {
-        // originalConsoleLog('[debug.ts] logDebug: Condition to append is FALSE for:', message);
     }
 };
 
 // Store original console methods
-const originalConsoleLog: (...data: any[]) => void = console.log;
-const originalConsoleError: (...data: any[]) => void = console.error;
-const originalConsoleWarn: (...data: any[]) => void = console.warn;
-const originalConsoleInfo: (...data: any[]) => void = console.info;
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+const originalConsoleInfo = console.info;
 
 // Override console methods
 // Ensure these use the *original* methods for actual output, AFTER logging via logDebug.
-console.log = (...args: any[]): void => { const messageStr = args.map(a => String(a)).join(' '); logDebug(messageStr, args.length > 1 ? args : undefined, 'log'); originalConsoleLog.apply(console, args); };
-console.error = (...args: any[]): void => { logDebug(args.map(a => String(a)).join(' '), args.length > 1 ? args : undefined, 'error'); originalConsoleError.apply(console, args); };
-console.warn = (...args: any[]): void => { logDebug(args.map(a => String(a)).join(' '), args.length > 1 ? args : undefined, 'warn'); originalConsoleWarn.apply(console, args); };
-console.info = (...args: any[]): void => { logDebug(args.map(a => String(a)).join(' '), args.length > 1 ? args : undefined, 'info'); originalConsoleInfo.apply(console, args); };
+console.log = (...args) => { const messageStr = args.map(a => String(a)).join(' '); logDebug(messageStr, args.length > 1 ? args : undefined, 'log'); originalConsoleLog.apply(console, args); };
+console.error = (...args) => { logDebug(args.map(a => String(a)).join(' '), args.length > 1 ? args : undefined, 'error'); originalConsoleError.apply(console, args); };
+console.warn = (...args) => { logDebug(args.map(a => String(a)).join(' '), args.length > 1 ? args : undefined, 'warn'); originalConsoleWarn.apply(console, args); };
+console.info = (...args) => { logDebug(args.map(a => String(a)).join(' '), args.length > 1 ? args : undefined, 'info'); originalConsoleInfo.apply(console, args); };
 
-const copyDebugLog = (): void => {
+/** @returns {void} */
+const copyDebugLog = () => {
     if (loggedMessages.length === 0) {
         logDebug("Nothing to copy from debug log.");
         return;
@@ -122,19 +125,17 @@ const copyDebugLog = (): void => {
         });
 };
 
-export const initDebugSystem = (elements: DebugElements): void => {
+/**
+ * @param {DebugElements} elements
+ * @returns {void}
+ */
+export const initDebugSystem = (elements) => {
     internalDebugOverlay = elements.debugOverlay;
     internalDebugMessagesContainer = elements.debugMessagesContainer;
     internalDebugClearBtn = elements.debugClearBtn;
     internalDebugCloseBtn = elements.debugCloseBtn;
     internalDebugCopyBtn = elements.debugCopyBtn;
     internalToggleDebugBtn = elements.toggleDebugBtn;
-
-    // For test debugging:
-    // console.log('[debug.ts] initDebugSystem received elements:', elements);
-    // console.log('[debug.ts] internalDebugOverlay after assign:', internalDebugOverlay);
-    // console.log('[debug.ts] internalDebugMessagesContainer after assign:', internalDebugMessagesContainer);
-
 
     if (internalDebugClearBtn) {
         internalDebugClearBtn.addEventListener('click', () => {
@@ -168,5 +169,4 @@ export const initDebugSystem = (elements: DebugElements): void => {
             }
         });
     }
-    // console.log("Debug system initialized with elements:", elements); // For app debugging
 };

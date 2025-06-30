@@ -1,46 +1,13 @@
-// js/app.ts
-// js/app.ts
-import { EDITOR_METADATA_KEY } from './config.ts';
-import * as dom from './domElements.ts';
-import * as utils from './utils.ts';
-import { logDebug, initDebugSystem } from './debug.ts';
-import * as pdfLibCore from './pdfSetup.ts';
-import { parsePdfCustomData } from './pdfMetadata.ts'; // Import the new function
+// js/app.js
+// js/app.js
+import { EDITOR_METADATA_KEY } from './config.js';
+import * as dom from './domElements.js';
+import * as utils from './utils.js';
+import { logDebug, initDebugSystem } from './debug.js';
+import * as pdfLibCore from './pdfSetup.js';
+import { parsePdfCustomData } from './pdfMetadata.js'; // Import the new function
 
-// Explicitly type PDFDocumentConstructors from pdf-lib
-// This helps in typing pdfDocInstance correctly later.
-// Note: This assumes pdfSetup.ts will export these types or the module itself.
-// For now, let's use `any` as a placeholder if direct types are complex to import immediately.
-type PDFDocument = any; // Placeholder for actual PDFDocument type from pdf-lib
-type PDFPage = any;     // Placeholder for actual PDFPage type from pdf-lib
-type PDFJSDocument = any; // Placeholder for pdfjsLib.PDFDocumentProxy
-type PDFJSPage = any;     // Placeholder for pdfjsLib.PDFPageProxy
-
-interface RedactionArea {
-    originalPageNum: number;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
-interface TextObject {
-    id: string;
-    originalPageNum: number;
-    text: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number; // Height might also be needed if text wraps or for bounding box
-    fontSize: number;
-    color: string;
-    direction: 'ltr' | 'rtl';
-    autoSize: boolean;
-}
-
-// Removed declare global for Window here; it's expected to be in pdfSetup.ts or a dedicated .d.ts file.
-// If pdfjsLib and showSaveFilePicker are needed globally and not typed elsewhere,
-// they would need a consolidated global declaration. For now, assuming pdfSetup.ts handles PDFLib/pdfjsLib globals.
+// Removed TypeScript type placeholders
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize the debug system with necessary DOM elements
@@ -52,39 +19,41 @@ document.addEventListener('DOMContentLoaded', () => {
         debugCopyBtn: dom.debugCopyBtn,
         toggleDebugBtn: dom.toggleDebugBtn,
     });
-    logDebug("Debug system initialized via app.ts");
+    logDebug("Debug system initialized via app.js");
 
 
     // Re-alias pdfLibCore objects for convenience if needed, or use pdfLibCore.PDFDocument etc.
-    // These will need types from the imported module. For now, some might be `any`.
-    const { PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale }: any = pdfLibCore;
+    const { PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale } = pdfLibCore;
 
     // --- State Variables ---
-    let pdfDoc: PDFJSDocument | null = null;
-    let pdfBytes: Uint8Array | null = null;
-    let pageOrder: number[] = [];
-    let activeTool: string | null = null;
-    let redactionAreas: RedactionArea[] = [];
-    let textObjects: TextObject[] = [];
-    let selectedRedactionBox: HTMLDivElement | null = null;
-    let selectedTextBox: HTMLDivElement | null = null;
+    let pdfDoc = null;
+    let pdfBytes = null;
+    let pageOrder = [];
+    let activeTool = null;
+    /** @type {Array<import('./app').RedactionArea>} */
+    let redactionAreas = [];
+    /** @type {Array<import('./app').TextObject>} */
+    let textObjects = [];
+    let selectedRedactionBox = null;
+    let selectedTextBox = null;
 
-    const actionButtons: (HTMLButtonElement | null)[] = [
+    const actionButtons = [
         dom.savePdfBtn, dom.saveFlatPdfBtnEl, dom.printPdfBtn, dom.closePdfBtn,
         dom.toolMergeBtn, dom.toolSplitBtn, dom.toolAddTextBtn, dom.toolRedactBtn
     ];
 
     // --- Core App Logic ---
-    const updateActionButtonsState = (enabled: boolean): void => actionButtons.forEach(b => { if (b) b.disabled = !enabled; });
+    /** @param {boolean} enabled */
+    const updateActionButtonsState = (enabled) => actionButtons.forEach(b => { if (b) b.disabled = !enabled; });
     updateActionButtonsState(false);
 
-    const openDrawer = (): void => {
+    const openDrawer = () => {
         if (dom.sidebar && dom.drawerOverlay) {
             dom.sidebar.classList.add('open');
             dom.drawerOverlay.classList.remove('hidden');
         }
     };
-    const closeDrawer = (): void => {
+    const closeDrawer = () => {
         if (dom.sidebar && dom.drawerOverlay) {
             dom.sidebar.classList.remove('open');
             dom.drawerOverlay.classList.add('hidden');
@@ -92,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     if (dom.menuBtn) {
-        dom.menuBtn.addEventListener('click', (e: MouseEvent) => {
+        dom.menuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (pdfDoc && dom.sidebar) {
                 dom.sidebar.classList.contains('open') ? closeDrawer() : openDrawer();
@@ -103,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.drawerOverlay.addEventListener('click', closeDrawer);
     }
 
-    const closePdf = (): void => {
+    const closePdf = () => {
         pdfDoc = null; pdfBytes = null; pageOrder = []; redactionAreas = []; textObjects = []; activeTool = null;
         if (dom.pageContainer) dom.pageContainer.innerHTML = '';
         if (dom.thumbnailsContainer) dom.thumbnailsContainer.innerHTML = '';
@@ -118,7 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
         logDebug("closePdf: PDF closed and state reset.");
     };
 
-    const loadPdf = async (file: File): Promise<void> => {
+    /** @param {File} file
+     *  @returns {Promise<void>}
+     */
+    const loadPdf = async (file) => {
         utils.showLoader('Loading PDF...');
         logDebug("loadPdf: Loading file", { name: file.name, size: file.size });
         try {
@@ -127,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dom.welcomeMessage) dom.welcomeMessage.classList.add('hidden');
             if (dom.openPdfBtn) dom.openPdfBtn.classList.add('hidden');
             if (dom.menuBtn) dom.menuBtn.classList.remove('hidden');
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error loading PDF:", error);
             logDebug("loadPdf: Error loading PDF", { error: error.message, stack: error.stack });
             alert(`Error loading PDF: ${error.message}`);
@@ -137,10 +109,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const loadPdfFromBytes = async (bytes: Uint8Array): Promise<void> => {
+    /** @param {Uint8Array} bytes
+     * @returns {Promise<void>}
+     */
+    const loadPdfFromBytes = async (bytes) => {
          utils.showLoader('Rendering PDF...');
-         pdfBytes = bytes; // Assuming pdfBytes is already Uint8Array | null
-         const pdfDocInstance: PDFDocument = await PDFDocument.load(bytes, { ignoreEncryption: true }); // pdf-lib instance
+         pdfBytes = bytes;
+         const pdfDocInstance = await PDFDocument.load(bytes, { ignoreEncryption: true }); // pdf-lib instance
          pdfDoc = await window.pdfjsLib.getDocument({ data: bytes }).promise; // pdf.js instance
 
          textObjects = [];
@@ -162,12 +137,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     logDebug("loadPdfFromBytes: Successfully parsed and loaded custom editor data.", { textObjectsCount: textObjects.length, redactionAreasCount: redactionAreas.length });
                 } else {
                     logDebug("loadPdfFromBytes: Failed to parse custom editor data or data was invalid/empty.");
-                    // textObjects and redactionAreas remain in their default empty state
                 }
             } else {
                 logDebug("loadPdfFromBytes: No custom editor data found in catalog with key: " + EDITOR_METADATA_KEY);
             }
-         } catch (e: any) {
+         } catch (e) {
              console.error("loadPdfFromBytes: Error processing custom catalog entry:", e);
              logDebug("loadPdfFromBytes: Error processing custom catalog entry. textObjects and redactionAreas remain empty.", { error: e.message, stack: e.stack });
          }
@@ -179,12 +153,13 @@ document.addEventListener('DOMContentLoaded', () => {
          utils.hideLoader();
     };
 
-    const renderAllPages = async (): Promise<void> => {
+    /** @returns {Promise<void>} */
+    const renderAllPages = async () => {
         if (!dom.pageContainer || !dom.viewerContainer || !pdfDoc) return;
         dom.pageContainer.innerHTML = '';
         logDebug("renderAllPages: Starting. Page order count: " + pageOrder.length);
         for (const pageNum of pageOrder) {
-            const page: PDFJSPage = await pdfDoc.getPage(pageNum);
+            const page = await pdfDoc.getPage(pageNum);
             const scale = (dom.viewerContainer.clientWidth / page.getViewport({ scale: 1.0 }).width) * 0.95;
             const viewport = page.getViewport({ scale });
             const canvas = document.createElement('canvas');
@@ -207,13 +182,14 @@ document.addEventListener('DOMContentLoaded', () => {
         logDebug("renderAllPages: Completed.");
     };
 
-    const renderThumbnails = async (): Promise<void> => {
+    /** @returns {Promise<void>} */
+    const renderThumbnails = async () => {
         if (!dom.thumbnailsContainer || !pdfDoc) return;
         dom.thumbnailsContainer.innerHTML = '';
         logDebug("renderThumbnails: Starting. Page order count: " + pageOrder.length);
         for (let i = 0; i < pageOrder.length; i++) {
             const pageNum = pageOrder[i];
-            const page: PDFJSPage = await pdfDoc.getPage(pageNum);
+            const page = await pdfDoc.getPage(pageNum);
             const viewport = page.getViewport({ scale: 0.3 });
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
@@ -236,8 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dom.openPdfBtn) dom.openPdfBtn.addEventListener('click', () => dom.fileInput?.click());
     if (dom.closePdfBtn) dom.closePdfBtn.addEventListener('click', closePdf);
     if (dom.fileInput) {
-        dom.fileInput.addEventListener('change', (e: Event) => {
-            const target = e.target as HTMLInputElement;
+        dom.fileInput.addEventListener('change', (e) => {
+            const target = /** @type {HTMLInputElement} */ (e.target);
             if (target.files && target.files.length > 0) {
                 loadPdf(target.files[0]);
             }
@@ -259,7 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const performStandardSave = async (): Promise<void> => {
+    /** @returns {Promise<void>} */
+    const performStandardSave = async () => {
         utils.showLoader('Saving Editable PDF...');
         logDebug("performStandardSave: Starting editable save.");
         try {
@@ -267,20 +244,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error("PDF data is not available.");
             }
 
-            const finalDoc: PDFDocument = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+            const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
 
             const dataToStore = JSON.stringify({ textObjects, redactionAreas });
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
 
-            // Encode the JSON string to UTF-8 bytes
             const utf8Bytes = new TextEncoder().encode(dataToStore);
-            // Store as a PDFHexString
             const customDataValue = PDFHexString.of(utf8Bytes);
 
             finalDoc.catalog.set(customDataKey, customDataValue);
             logDebug("performStandardSave: Set custom data (UTF-8 as PDFHexString) in PDF catalog.", { key: customDataKey.toString(), dataLength: utf8Bytes.length });
 
-            const finalPdfBytes: Uint8Array = await finalDoc.save();
+            const finalPdfBytes = await finalDoc.save();
             const originalFileName = (dom.fileInput?.files?.[0]?.name || 'document.pdf').replace(/\.pdf$/i, '');
             const suggestedName = `${originalFileName}-editable.pdf`;
 
@@ -294,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     await writable.write(finalPdfBytes);
                     await writable.close();
                     logDebug("performStandardSave: File saved via showSaveFilePicker.");
-                } catch (err: any) {
+                } catch (err) {
                     if (err.name !== 'AbortError') {
                         console.error('Error saving with showSaveFilePicker:', err);
                         logDebug("performStandardSave: Error with showSaveFilePicker, falling back.", {error: err.message});
@@ -307,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 logDebug("performStandardSave: Falling back to downloadBlob for saving.");
                 utils.downloadBlob(finalPdfBytes, suggestedName);
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error("Failed to save PDF:", error);
             logDebug("performStandardSave: ERROR during save process", { error: error.message, stack: error.stack });
         } finally {
@@ -315,7 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const performFlattenedSave = async (): Promise<void> => {
+    /** @returns {Promise<void>} */
+    const performFlattenedSave = async () => {
         utils.showLoader('Saving Flattened PDF...');
         logDebug("performFlattenedSave: Starting flattened save.");
         try {
@@ -323,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error("PDF data is not available for flattened save.");
             }
 
-            const finalDoc: PDFDocument = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+            const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
             const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
 
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
@@ -340,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     continue;
                 }
 
-                const page: PDFPage = finalDoc.getPage(pageIndex);
+                const page = finalDoc.getPage(pageIndex);
                 const { height: pageHeight } = page.getSize();
                 const color = utils.hexToRgb(textObj.color);
 
@@ -373,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     logDebug(`Skipping redactionArea for flattened save, pageIndex not found for originalPageNum: ${area.originalPageNum}`);
                     continue;
                 }
-                const page: PDFPage = finalDoc.getPage(pageIndex);
+                const page = finalDoc.getPage(pageIndex);
                 const { height: pageHeight } = page.getSize();
 
                 const x = area.x;
@@ -396,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            const finalPdfBytes: Uint8Array = await finalDoc.save();
+            const finalPdfBytes = await finalDoc.save();
             const originalFileName = (dom.fileInput?.files?.[0]?.name || 'document.pdf').replace(/\.pdf$/i, '');
             const suggestedName = `${originalFileName}-shared.pdf`;
 
@@ -410,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     await writable.write(finalPdfBytes);
                     await writable.close();
                     logDebug("performFlattenedSave: File saved via showSaveFilePicker.");
-                } catch (err: any) {
+                } catch (err) {
                     if (err.name !== 'AbortError') {
                         console.error('Error saving flattened PDF with showSaveFilePicker:', err);
                         logDebug("performFlattenedSave: Error with showSaveFilePicker, falling back.", {error: err.message});
@@ -423,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 logDebug("performFlattenedSave: Falling back to downloadBlob for saving.");
                 utils.downloadBlob(finalPdfBytes, suggestedName);
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error("Failed to save flattened PDF:", error);
             logDebug("performFlattenedSave: ERROR during save process", { error: error.message, stack: error.stack });
         } finally {
@@ -432,16 +408,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- OBJECT RENDERING & SELECTION ---
-    const renderRedactionBoxes = async (): Promise<void> => {
+    /** @returns {Promise<void>} */
+    const renderRedactionBoxes = async () => {
         if (!dom.pageContainer || !pdfDoc) return;
         document.querySelectorAll('.redaction-box').forEach(box => box.remove());
         logDebug("renderRedactionBoxes. Count: " + redactionAreas.length, redactionAreas);
         for (const [index, area] of redactionAreas.entries()) {
-            const pageDiv = dom.pageContainer.querySelector(`canvas[data-page-num="${area.originalPageNum}"]`)?.parentElement as HTMLElement | null;
+            const pageDiv = /** @type {HTMLElement | null} */ (dom.pageContainer.querySelector(`canvas[data-page-num="${area.originalPageNum}"]`)?.parentElement);
             if (!pageDiv) continue;
             const canvas = pageDiv.querySelector('canvas');
             if (!canvas) continue;
-            const page: PDFJSPage = await pdfDoc.getPage(area.originalPageNum);
+            const page = await pdfDoc.getPage(area.originalPageNum);
             const scale = canvas.width / page.getViewport({scale: 1.0}).width;
             const box = document.createElement('div');
             box.className = 'redaction-box';
@@ -453,10 +430,12 @@ document.addEventListener('DOMContentLoaded', () => {
             pageDiv.appendChild(box);
         }
     };
-
-    async function updateTextBoxSize(textarea: HTMLTextAreaElement): Promise<void> {
+    /** @param {HTMLTextAreaElement} textarea
+     * @returns {Promise<void>}
+     */
+    async function updateTextBoxSize(textarea) {
         if (!textarea || !textarea.parentElement || !(textarea.parentElement instanceof HTMLDivElement) || !pdfDoc) return;
-        const box = textarea.parentElement as HTMLDivElement; // Assert box is HTMLDivElement
+        const box = /** @type {HTMLDivElement} */ (textarea.parentElement);
         if (!box.dataset.textIndex) return;
         const textIndex = parseInt(box.dataset.textIndex, 10);
         if (isNaN(textIndex) || !textObjects[textIndex]) return;
@@ -464,14 +443,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const textObj = textObjects[textIndex];
         const canvas = textarea.closest('.relative')?.querySelector('canvas');
         if (!canvas) return;
-        const page: PDFJSPage = await pdfDoc.getPage(textObj.originalPageNum);
+        const page = await pdfDoc.getPage(textObj.originalPageNum);
         const scale = canvas.width / page.getViewport({ scale: 1.0 }).width;
 
         if (textObj.autoSize) {
             const oldWidthPx = box.offsetWidth;
-            textarea.style.width = '1px'; // Temporarily shrink to measure scrollWidth
-            const newWidthPx = textarea.scrollWidth + 4; // Add some padding
-            textarea.style.width = '100%'; // Restore for layout
+            textarea.style.width = '1px';
+            const newWidthPx = textarea.scrollWidth + 4;
+            textarea.style.width = '100%';
             const widthDifference = newWidthPx - oldWidthPx;
 
             if (textObj.direction === 'rtl' && widthDifference > 0) {
@@ -484,20 +463,21 @@ document.addEventListener('DOMContentLoaded', () => {
             textObj.width = newWidthPx / scale;
         }
 
-        textarea.style.height = 'auto'; // Temporarily shrink to measure scrollHeight
+        textarea.style.height = 'auto';
         const newHeightPx = textarea.scrollHeight;
-        textarea.style.height = `${newHeightPx}px`; // Set to new scrollHeight
+        textarea.style.height = `${newHeightPx}px`;
         box.style.height = `${newHeightPx}px`;
         textObj.height = newHeightPx / scale;
     }
 
-    const renderTextObjects = async (): Promise<void> => {
+    /** @returns {Promise<void>} */
+    const renderTextObjects = async () => {
         if (!dom.pageContainer || !pdfDoc) return;
         logDebug("Starting renderTextObjects. Current textObjects count: " + textObjects.length, textObjects);
         document.querySelectorAll('.text-box').forEach(box => box.remove());
         for (const [index, textObj] of textObjects.entries()) {
             logDebug(`Rendering textObj at index ${index}`, textObj);
-            const pageDiv = dom.pageContainer.querySelector(`canvas[data-page-num="${textObj.originalPageNum}"]`)?.parentElement as HTMLElement | null;
+            const pageDiv = /** @type {HTMLElement | null} */ (dom.pageContainer.querySelector(`canvas[data-page-num="${textObj.originalPageNum}"]`)?.parentElement);
             if (!pageDiv) {
                 logDebug(`Skipping textObj ${index}: Page div not found for pageNum ${textObj.originalPageNum}`);
                 continue;
@@ -507,7 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 logDebug(`Skipping textObj ${index}: Canvas not found in pageDiv for pageNum ${textObj.originalPageNum}`);
                 continue;
             }
-            const page: PDFJSPage = await pdfDoc.getPage(textObj.originalPageNum);
+            const page = await pdfDoc.getPage(textObj.originalPageNum);
             const scale = canvas.width / page.getViewport({scale: 1.0}).width;
             logDebug(`TextObj ${index}: Scale calculated as ${scale}`);
 
@@ -519,7 +499,6 @@ document.addEventListener('DOMContentLoaded', () => {
             box.style.left = `${textObj.x * scale}px`;
             box.style.top = `${textObj.y * scale}px`;
             box.style.width = `${textObj.width * scale}px`;
-            // Height will be set by updateTextBoxSize
 
             const textarea = document.createElement('textarea');
             textarea.value = textObj.text;
@@ -529,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
             textarea.addEventListener('input', async () => {
                 const text = textarea.value;
                 const currentTextObj = textObjects[index];
-                if (!currentTextObj) return; // Should not happen if index is valid
+                if (!currentTextObj) return;
                 currentTextObj.text = text;
 
                 if (utils.hasRtl(text)) {
@@ -555,17 +534,19 @@ document.addEventListener('DOMContentLoaded', () => {
             box.appendChild(textarea);
             pageDiv.appendChild(box);
 
-            await Promise.resolve(); // Allow DOM to update
+            await Promise.resolve();
             await updateTextBoxSize(textarea);
         }
     };
-
-    const selectRedactionBox = (boxElement: HTMLDivElement | null, internalCall: boolean = false): void => {
+    /** @param {HTMLDivElement | null} boxElement
+     * @param {boolean} [internalCall=false]
+     */
+    const selectRedactionBox = (boxElement, internalCall = false) => {
         if (selectedRedactionBox) {
             selectedRedactionBox.classList.remove('selected', 'resize-mode');
-            Array.from(selectedRedactionBox.children).forEach(child => child.remove()); // Remove handles
+            Array.from(selectedRedactionBox.children).forEach(child => child.remove());
         }
-        if (!internalCall) selectTextBox(null, true); // Deselect other type
+        if (!internalCall) selectTextBox(null, true);
 
         if (boxElement) {
             selectedRedactionBox = boxElement;
@@ -576,13 +557,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dom.redactionToolbar) dom.redactionToolbar.classList.remove('visible');
         }
     };
-
-    const selectTextBox = (boxElement: HTMLDivElement | null, internalCall: boolean = false): void => {
+    /** @param {HTMLDivElement | null} boxElement
+     * @param {boolean} [internalCall=false]
+     */
+    const selectTextBox = (boxElement, internalCall = false) => {
         if (selectedTextBox) {
             selectedTextBox.classList.remove('selected', 'resize-mode');
             Array.from(selectedTextBox.querySelectorAll('.resize-handle')).forEach(h => h.remove());
         }
-        if (!internalCall) selectRedactionBox(null, true); // Deselect other type
+        if (!internalCall) selectRedactionBox(null, true);
 
         if (boxElement && boxElement.dataset.textIndex !== undefined) {
             selectedTextBox = boxElement;
@@ -596,7 +579,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (textObj) {
                 logDebug("selectTextBox: textObj found. Current properties:", JSON.parse(JSON.stringify(textObj)));
                 let defaulted = false;
-                // Ensure properties exist and are of correct type before assigning
                 if (typeof textObj.fontSize !== 'number') { textObj.fontSize = 12; defaulted = true; logDebug("Defaulted fontSize"); }
                 if (typeof textObj.color !== 'string') { textObj.color = '#000000'; defaulted = true; logDebug("Defaulted color"); }
                 if (typeof textObj.text !== 'string') { textObj.text = ''; defaulted = true; logDebug("Defaulted text"); }
@@ -609,7 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (dom.textFontSizeInput) dom.textFontSizeInput.value = String(textObj.fontSize);
                 if (dom.textColorInput) dom.textColorInput.value = textObj.color;
 
-                textObjects[textObjIndex] = textObj; // Ensure this is updated if defaulted
+                textObjects[textObjIndex] = textObj;
 
                 selectedTextBox.classList.toggle('auto-size', textObj.autoSize);
                 selectedTextBox.classList.toggle('resize-mode', !textObj.autoSize);
@@ -618,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ['nw', 'ne', 'sw', 'se'].forEach(pos => {
                         const handle = document.createElement('div');
                         handle.className = `resize-handle ${pos}`;
-                        selectedTextBox?.appendChild(handle); // Check selectedTextBox is not null
+                        selectedTextBox?.appendChild(handle);
                     });
                 } else {
                      Array.from(selectedTextBox.querySelectorAll('.resize-handle')).forEach(h => h.remove());
@@ -645,8 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- TOOLBAR EVENT LISTENERS ---
-    // --- TOOLBAR EVENT LISTENERS ---
-    if (dom.toolbarResizeBtn) { // Redaction resize
+    if (dom.toolbarResizeBtn) {
         dom.toolbarResizeBtn.addEventListener('click', () => {
             if (!selectedRedactionBox) return;
             selectedRedactionBox.classList.toggle('resize-mode');
@@ -654,7 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  ['nw', 'ne', 'sw', 'se'].forEach(pos => {
                     const handle = document.createElement('div');
                     handle.className = `resize-handle ${pos}`;
-                    if (selectedRedactionBox) selectedRedactionBox.appendChild(handle); // Null check
+                    if (selectedRedactionBox) selectedRedactionBox.appendChild(handle);
                 });
             } else {
                 Array.from(selectedRedactionBox.querySelectorAll('.resize-handle')).forEach(h => h.remove());
@@ -662,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (dom.textToolbarResizeBtn) { // Textbox resize/autosize toggle
+    if (dom.textToolbarResizeBtn) {
         dom.textToolbarResizeBtn.addEventListener('click', async () => {
             if (!selectedTextBox || !selectedTextBox.dataset || !selectedTextBox.dataset.textIndex) return;
             const textObj = textObjects[parseInt(selectedTextBox.dataset.textIndex, 10)];
@@ -676,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  ['nw', 'ne', 'sw', 'se'].forEach(pos => {
                     const handle = document.createElement('div');
                     handle.className = `resize-handle ${pos}`;
-                    if (selectedTextBox) selectedTextBox.appendChild(handle); // Null check
+                    if (selectedTextBox) selectedTextBox.appendChild(handle);
                 });
             } else {
                 Array.from(selectedTextBox.querySelectorAll('.resize-handle')).forEach(h => h.remove());
@@ -686,7 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (dom.toolbarDeleteBtn) { // Redaction delete
+    if (dom.toolbarDeleteBtn) {
         dom.toolbarDeleteBtn.addEventListener('click', async () => {
             if (!selectedRedactionBox || !selectedRedactionBox.dataset || !selectedRedactionBox.dataset.redactionIndex) return;
             const index = parseInt(selectedRedactionBox.dataset.redactionIndex, 10);
@@ -698,9 +679,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (dom.textFontSizeInput) {
-        dom.textFontSizeInput.addEventListener('input', async (e: Event) => {
+        dom.textFontSizeInput.addEventListener('input', async (e) => {
             if (!selectedTextBox || !selectedTextBox.dataset || !selectedTextBox.dataset.textIndex) return;
-            const target = e.target as HTMLInputElement;
+            const target = /** @type {HTMLInputElement} */ (e.target);
             const index = parseInt(selectedTextBox.dataset.textIndex, 10);
             const newSize = parseInt(target.value, 10);
             if (isNaN(newSize) || !textObjects[index]) return;
@@ -708,8 +689,8 @@ document.addEventListener('DOMContentLoaded', () => {
             textObjects[index].fontSize = newSize;
             const textarea = selectedTextBox.querySelector('textarea');
             const canvas = selectedTextBox.closest('.relative')?.querySelector('canvas');
-            if (textarea && canvas && pdfDoc && selectedTextBox) { // Added null check for selectedTextBox
-                const page: PDFJSPage = await pdfDoc.getPage(textObjects[index].originalPageNum);
+            if (textarea && canvas && pdfDoc && selectedTextBox) {
+                const page = await pdfDoc.getPage(textObjects[index].originalPageNum);
                 const scale = canvas.width / page.getViewport({scale: 1.0}).width;
                 textarea.style.fontSize = `${newSize * scale}px`;
                 await updateTextBoxSize(textarea);
@@ -718,12 +699,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (dom.textColorInput) {
-        dom.textColorInput.addEventListener('input', (e: Event) => {
+        dom.textColorInput.addEventListener('input', (e) => {
             if (!selectedTextBox || !selectedTextBox.dataset || !selectedTextBox.dataset.textIndex) return;
-            const target = e.target as HTMLInputElement;
+            const target = /** @type {HTMLInputElement} */ (e.target);
             const index = parseInt(selectedTextBox.dataset.textIndex, 10);
             const newColor = target.value;
-            if (textObjects[index] && selectedTextBox) { // Added null check for selectedTextBox
+            if (textObjects[index] && selectedTextBox) {
                 textObjects[index].color = newColor;
                 const textarea = selectedTextBox.querySelector('textarea');
                 if (textarea) textarea.style.color = newColor;
@@ -743,52 +724,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- INTERACTION LOGIC ---
-    interface InteractionState {
-        type: 'resize' | 'move' | 'create-redaction' | 'create-text' | null;
-        startX: number;
-        startY: number;
-        startLeft: number;
-        startTop: number;
-        startWidth: number;
-        startHeight: number;
-        handle: string | null; // e.g., 'nw', 'ne', 'sw', 'se'
-    }
-    let interactionState: InteractionState = { type: null, startX: 0, startY: 0, startLeft: 0, startTop: 0, startWidth: 0, startHeight: 0, handle: null };
+    /** @type {InteractionState} */
+    let interactionState = { type: null, startX: 0, startY: 0, startLeft: 0, startTop: 0, startWidth: 0, startHeight: 0, handle: null };
 
-    const interactionTarget: HTMLElement | Document = dom.pageContainer || document;
+    const interactionTarget = dom.pageContainer || document;
 
-    // Ensure EventListener casts are applied
-    interactionTarget.addEventListener('mousedown', handleInteractionStart as unknown as EventListener);
-    document.addEventListener('mousemove', handleInteractionMove as unknown as EventListener);
-    document.addEventListener('mouseup', handleInteractionEnd as unknown as EventListener);
-    interactionTarget.addEventListener('touchstart', handleInteractionStart as unknown as EventListener, { passive: false });
-    document.addEventListener('touchmove', handleInteractionMove as unknown as EventListener, { passive: false });
-    document.addEventListener('touchend', handleInteractionEnd as unknown as EventListener);
-
-    async function handleInteractionStart(e: MouseEvent | TouchEvent): Promise<void> {
-        const touch = (e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : (e as MouseEvent);
-        const target = e.target as HTMLElement;
+    interactionTarget.addEventListener('mousedown', /** @type {EventListener} */ (handleInteractionStart));
+    document.addEventListener('mousemove', /** @type {EventListener} */ (handleInteractionMove));
+    document.addEventListener('mouseup', /** @type {EventListener} */ (handleInteractionEnd));
+    interactionTarget.addEventListener('touchstart', /** @type {EventListener} */ (handleInteractionStart), { passive: false });
+    document.addEventListener('touchmove', /** @type {EventListener} */ (handleInteractionMove), { passive: false });
+    document.addEventListener('touchend', /** @type {EventListener} */ (handleInteractionEnd));
+    /** @param {MouseEvent | TouchEvent} e
+     * @returns {Promise<void>}
+     */
+    async function handleInteractionStart(e) {
+        const touch = e.changedTouches ? e.changedTouches[0] : e;
+        const target = /** @type {HTMLElement} */ (e.target);
         logDebug("handleInteractionStart: Fired", { target: target.tagName + (target.className ? '.' + target.className : ''), clientX: touch.clientX, clientY: touch.clientY });
 
-        const closestResizeHandle = target.closest('.resize-handle') as HTMLElement | null;
-        const closestRedactionBox = target.closest('.redaction-box') as HTMLDivElement | null;
-        const closestTextBox = target.closest('.text-box') as HTMLDivElement | null;
+        const closestResizeHandle = target.closest('.resize-handle');
+        const closestRedactionBox = target.closest('.redaction-box');
+        const closestTextBox = target.closest('.text-box');
 
         if (closestResizeHandle) {
             e.stopPropagation();
             interactionState.type = 'resize';
-            interactionState.handle = closestResizeHandle.classList[1]; // Assumes second class is 'nw', 'ne', etc.
+            interactionState.handle = closestResizeHandle.classList[1];
             logDebug("Interaction type: resize", { handle: interactionState.handle });
         } else if (closestRedactionBox) {
             e.stopPropagation();
             interactionState.type = 'move';
             logDebug("Interaction type: move (redaction box)");
-            selectRedactionBox(closestRedactionBox);
+            selectRedactionBox(/** @type {HTMLDivElement} */ (closestRedactionBox));
         } else if (closestTextBox) {
             e.stopPropagation();
             interactionState.type = 'move';
             logDebug("Interaction type: move (text box)");
-            selectTextBox(closestTextBox);
+            selectTextBox(/** @type {HTMLDivElement} */ (closestTextBox));
         } else if (target.matches('canvas')) {
             logDebug("Interaction target: canvas", { activeTool });
             if (activeTool === 'redact') {
@@ -825,11 +798,13 @@ document.addEventListener('DOMContentLoaded', () => {
             logDebug("Interaction state initialized for create operation", { type: interactionState.type, startX: interactionState.startX, startY: interactionState.startY });
         }
     }
-
-    async function handleInteractionMove(e: MouseEvent | TouchEvent): Promise<void> {
-        if (!interactionState.type || (interactionState.type !== 'move' && interactionState.type !== 'resize')) return; // Only move/resize uses mousemove
+    /** @param {MouseEvent | TouchEvent} e
+     * @returns {Promise<void>}
+     */
+    async function handleInteractionMove(e) {
+        if (!interactionState.type || (interactionState.type !== 'move' && interactionState.type !== 'resize')) return;
         e.preventDefault();
-        const touch = (e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : (e as MouseEvent);
+        const touch = e.changedTouches ? e.changedTouches[0] : e;
         const dx = touch.clientX - interactionState.startX;
         const dy = touch.clientY - interactionState.startY;
         const selectedBox = selectedRedactionBox || selectedTextBox;
@@ -852,8 +827,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (handle.includes('s')) newHeight = startHeight + dy;
             if (handle.includes('n')) { newHeight = startHeight - dy; newTop = startTop + dy; }
 
-            selectedBox.style.width = `${Math.max(10, newWidth)}px`; // Min width 10px
-            selectedBox.style.height = `${Math.max(10, newHeight)}px`; // Min height 10px
+            selectedBox.style.width = `${Math.max(10, newWidth)}px`;
+            selectedBox.style.height = `${Math.max(10, newHeight)}px`;
             if (handle.includes('w')) selectedBox.style.left = `${newLeft}px`;
             if (handle.includes('n')) selectedBox.style.top = `${newTop}px`;
 
@@ -863,17 +838,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
-    async function handleInteractionEnd(e: MouseEvent | TouchEvent): Promise<void> {
+    /** @param {MouseEvent | TouchEvent} e
+     * @returns {Promise<void>}
+     */
+    async function handleInteractionEnd(e) {
         if (!interactionState.type) return;
         logDebug("handleInteractionEnd: Fired", { type: interactionState.type });
 
         const selectedBox = selectedRedactionBox || selectedTextBox;
-        const eventTargetCanvas = (e.target as HTMLElement).closest('canvas');
+        const eventTargetCanvas = /** @type {HTMLCanvasElement | null} */ (e.target.closest('canvas'));
         const canvas = selectedBox ? selectedBox.closest('.relative')?.querySelector('canvas') : eventTargetCanvas;
 
         if (!canvas || !pdfDoc || !canvas.dataset.pageNum) {
-            logDebug("handleInteractionEnd: No canvas found, pdfDoc not loaded, or pageNum missing. Aborting.", {selectedBoxExists: !!selectedBox, eventTarget: (e.target as HTMLElement).tagName, pdfDocExists: !!pdfDoc});
+            logDebug("handleInteractionEnd: No canvas found, pdfDoc not loaded, or pageNum missing. Aborting.", {selectedBoxExists: !!selectedBox, eventTarget: e.target.tagName, pdfDocExists: !!pdfDoc});
             interactionState.type = null;
             return;
         }
@@ -885,12 +862,12 @@ document.addEventListener('DOMContentLoaded', () => {
              return;
         }
         logDebug("handleInteractionEnd: Operating on canvas for pageNum: " + pageNum);
-        const page: PDFJSPage = await pdfDoc.getPage(pageNum);
+        const page = await pdfDoc.getPage(pageNum);
         const scale = canvas.width / page.getViewport({scale: 1.0}).width;
         const canvasRect = canvas.getBoundingClientRect();
 
         if (interactionState.type === 'move' || interactionState.type === 'resize') {
-            if (!selectedBox) { interactionState.type = null; return; } // Should not happen if type is move/resize
+            if (!selectedBox) { interactionState.type = null; return; }
             if (selectedTextBox) {
                 const textarea = selectedTextBox.querySelector('textarea');
                 if (textarea) await updateTextBoxSize(textarea);
@@ -911,14 +888,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 logDebug("handleInteractionEnd: Updated textObject", { index, newRect: textObjects[index] });
             }
         } else if (interactionState.type === 'create-redaction') {
-            const touch = (e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : (e as MouseEvent);
+            const touch = e.changedTouches ? e.changedTouches[0] : e;
             logDebug("handleInteractionEnd: Creating redaction", {startX: interactionState.startX, currentX: touch.clientX, canvasLeft: canvasRect.left, scale});
             const x1 = (interactionState.startX - canvasRect.left) / scale;
             const y1 = (interactionState.startY - canvasRect.top) / scale;
             const x2 = (touch.clientX - canvasRect.left) / scale;
             const y2 = (touch.clientY - canvasRect.top) / scale;
 
-            if (Math.abs(x1 - x2) > 5 && Math.abs(y1 - y2) > 5) { // Min size check
+            if (Math.abs(x1 - x2) > 5 && Math.abs(y1 - y2) > 5) {
                  redactionAreas.push({
                     originalPageNum: pageNum,
                     x: Math.min(x1, x2),
@@ -931,19 +908,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             resetTool();
         } else if (interactionState.type === 'create-text') {
-            const touch = (e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : (e as MouseEvent);
+            const touch = e.changedTouches ? e.changedTouches[0] : e;
             const x = (touch.clientX - canvasRect.left) / scale;
             const y = (touch.clientY - canvasRect.top) / scale;
             logDebug("handleInteractionEnd: Creating text", { x, y, scale });
 
-            const newTextObj: TextObject = {
+            const newTextObj = {
                 id: crypto.randomUUID(),
                 originalPageNum: pageNum,
                 text: 'New Text',
                 x, y,
-                width: 100 / scale, // Default width in PDF units
-                height: 20 / scale, // Default height in PDF units
-                fontSize: 12, // Default font size in PDF points
+                width: 100 / scale,
+                height: 20 / scale,
+                fontSize: 12,
                 color: '#000000',
                 direction: 'ltr',
                 autoSize: true,
@@ -951,7 +928,7 @@ document.addEventListener('DOMContentLoaded', () => {
             textObjects.push(newTextObj);
             logDebug("handleInteractionEnd: New textObject pushed", { newTextObj });
             await renderTextObjects();
-            const newBox = dom.pageContainer?.querySelector(`.text-box[data-text-index="${textObjects.length - 1}"]`) as HTMLDivElement | null;
+            const newBox = /** @type {HTMLDivElement | null} */ (dom.pageContainer?.querySelector(`.text-box[data-text-index="${textObjects.length - 1}"]`));
             if (newBox) {
                 logDebug("handleInteractionEnd: Selecting newly created text box.");
                 selectTextBox(newBox);
@@ -965,12 +942,16 @@ document.addEventListener('DOMContentLoaded', () => {
         interactionState.type = null;
     }
 
-    const resetTool = (): void => {
+    const resetTool = () => {
         logDebug("resetTool: Resetting activeTool: " + activeTool);
         activeTool = null;
         if (dom.pageContainer) dom.pageContainer.style.cursor = 'default';
     };
-    const activateTool = (toolName: string, message: string): boolean => {
+    /** @param {string} toolName
+     * @param {string} message
+     * @returns {boolean}
+     */
+    const activateTool = (toolName, message) => {
         activeTool = toolName;
         logDebug("activateTool: Activated " + toolName);
         alert(message);
@@ -990,3 +971,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     logDebug("Application initialized and event listeners attached.");
 });
+
+/**
+ * @typedef {object} RedactionArea
+ * @property {number} originalPageNum
+ * @property {number} x
+ * @property {number} y
+ * @property {number} width
+ * @property {number} height
+ */
+
+/**
+ * @typedef {object} TextObject
+ * @property {string} id
+ * @property {number} originalPageNum
+ * @property {string} text
+ * @property {number} x
+ * @property {number} y
+ * @property {number} width
+ * @property {number} height
+ * @property {number} fontSize
+ * @property {string} color
+ * @property {'ltr' | 'rtl'} direction
+ * @property {boolean} autoSize
+ */
+
+/**
+ * @typedef {object} InteractionState
+ * @property {'resize' | 'move' | 'create-redaction' | 'create-text' | null} type
+ * @property {number} startX
+ * @property {number} startY
+ * @property {number} startLeft
+ * @property {number} startTop
+ * @property {number} startWidth
+ * @property {number} startHeight
+ * @property {string | null} handle
+ */

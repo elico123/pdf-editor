@@ -1,54 +1,55 @@
-import { logDebug } from './debug.ts';
+import { logDebug } from './debug.js';
 
-// Define interfaces for the structure of the data we expect to parse
-// These might be already defined in app.ts or a types file, if so, import them.
-// For now, defining them here for clarity.
-interface TextObject {
-    id: string;
-    originalPageNum: number;
-    text: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    fontSize: number;
-    color: string;
-    direction: 'ltr' | 'rtl';
-    autoSize: boolean;
-}
+/**
+ * @typedef {object} TextObject
+ * @property {string} id
+ * @property {number} originalPageNum
+ * @property {string} text
+ * @property {number} x
+ * @property {number} y
+ * @property {number} width
+ * @property {number} height
+ * @property {number} fontSize
+ * @property {string} color
+ * @property {'ltr' | 'rtl'} direction
+ * @property {boolean} autoSize
+ */
 
-interface RedactionArea {
-    originalPageNum: number;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
+/**
+ * @typedef {object} RedactionArea
+ * @property {number} originalPageNum
+ * @property {number} x
+ * @property {number} y
+ * @property {number} width
+ * @property {number} height
+ */
 
-interface ParsedCustomData {
-    textObjects: TextObject[];
-    redactionAreas: RedactionArea[];
-}
+/**
+ * @typedef {object} ParsedCustomData
+ * @property {TextObject[]} textObjects
+ * @property {RedactionArea[]} redactionAreas
+ */
 
 /**
  * Parses custom editor data from a PDF catalog value.
  *
- * @param customDataValue The value retrieved from the PDF catalog.
- * @param PDFHexString The PDFHexString constructor/object from pdf-lib.
- * @param PDFString The PDFString constructor/object from pdf-lib.
- * @returns An object containing textObjects and redactionAreas, or null if parsing fails or data is invalid.
+ * @param {any} customDataValue The value retrieved from the PDF catalog.
+ * @param {any} PDFHexString The PDFHexString constructor/object from pdf-lib.
+ * @param {any} PDFString The PDFString constructor/object from pdf-lib.
+ * @returns {ParsedCustomData | null} An object containing textObjects and redactionAreas, or null if parsing fails or data is invalid.
  */
 export function parsePdfCustomData(
-    customDataValue: any,
-    PDFHexString: any,
-    PDFString: any
-): ParsedCustomData | null {
+    customDataValue,
+    PDFHexString,
+    PDFString
+) {
     if (!customDataValue) {
         logDebug("parsePdfCustomData: No custom data value provided.");
         return null;
     }
 
-    let jsonData: string | null = null;
+    /** @type {string | null} */
+    let jsonData = null;
 
     try {
         if (customDataValue instanceof PDFHexString) {
@@ -59,11 +60,11 @@ export function parsePdfCustomData(
         } else if (customDataValue instanceof PDFString) {
             logDebug("parsePdfCustomData: Found custom editor data as PDFString in catalog.");
             try {
-                const bytes = (customDataValue as any).getBytes();
+                const bytes = customDataValue.getBytes();
                 jsonData = new TextDecoder('utf-8').decode(bytes);
                 logDebug("parsePdfCustomData: Decoded PDFString data using UTF-8 via getBytes().", { dataLength: jsonData.length });
             } catch (e) {
-                logDebug("parsePdfCustomData: Failed to getBytes() from PDFString, falling back to asString(). Error: " + (e as Error).message);
+                logDebug("parsePdfCustomData: Failed to getBytes() from PDFString, falling back to asString(). Error: " + e.message);
                 jsonData = customDataValue.asString();
                 logDebug("parsePdfCustomData: Decoded PDFString data using asString() (fallback).", { dataLength: jsonData.length });
             }
@@ -86,7 +87,7 @@ export function parsePdfCustomData(
                 return null;
             }
         }
-    } catch (e: any) {
+    } catch (e) {
         console.error("parsePdfCustomData: Error parsing custom data JSON.", e);
         logDebug("parsePdfCustomData: Error parsing custom data JSON.", { error: e.message, stack: e.stack, jsonDataReceived: jsonData ?? 'unavailable (error before assignment or during parsing)' });
         return null;
