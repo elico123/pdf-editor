@@ -21,6 +21,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     logDebug("Debug system initialized via app.js");
 
+    // Function to load and display the application version
+    async function loadAndDisplayVersion() {
+        const versionElement = document.getElementById('app-version');
+        if (!versionElement) {
+            console.error("Version element #app-version not found.");
+            return;
+        }
+
+        try {
+            // Path is relative to index.html where app.js is loaded
+            const response = await fetch('dist/version.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const versionInfo = await response.json();
+            if (versionInfo && versionInfo.version) {
+                versionElement.textContent = `Version: ${versionInfo.version}`;
+                logDebug(`App version loaded: ${versionInfo.version}`);
+            } else {
+                throw new Error("Version data is invalid or missing.");
+            }
+        } catch (error) {
+            console.error("Failed to load or display version:", error);
+            logDebug("Failed to load or display version:", { error: error.message });
+            versionElement.textContent = 'Version: N/A';
+        }
+    }
+
+    // Load and display the version
+    loadAndDisplayVersion();
 
     // Re-alias pdfLibCore objects for convenience if needed, or use pdfLibCore.PDFDocument etc.
     const { PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale } = pdfLibCore;
