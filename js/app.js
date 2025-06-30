@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // BEGIN: Added code for Hebrew font loading
             let hebrewFont = null;
             try {
-                const fontUrl = '/fonts/OpenSansHebrew-Regular.ttf';
+                const fontUrl = '/Open Sans Hebrew Regular.ttf'; // Changed path
                 logDebug(`performFlattenedSave: Fetching Hebrew font from ${fontUrl}`);
                 const fontBytes = await fetch(fontUrl).then(res => {
                     if (!res.ok) {
