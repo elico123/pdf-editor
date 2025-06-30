@@ -64,9 +64,15 @@ export function parsePdfCustomData(
                 jsonData = new TextDecoder('utf-8').decode(bytes);
                 logDebug("parsePdfCustomData: Decoded PDFString data using UTF-8 via getBytes().", { dataLength: jsonData.length });
             } catch (e) {
-                logDebug("parsePdfCustomData: Failed to getBytes() from PDFString, falling back to asString(). Error: " + e.message);
-                jsonData = customDataValue.asString();
-                logDebug("parsePdfCustomData: Decoded PDFString data using asString() (fallback).", { dataLength: jsonData.length });
+                // OLD:
+                // logDebug("parsePdfCustomData: Failed to getBytes() from PDFString, falling back to asString(). Error: " + e.message);
+                // jsonData = customDataValue.asString();
+                // logDebug("parsePdfCustomData: Decoded PDFString data using asString() (fallback).", { dataLength: jsonData.length });
+
+                // NEW:
+                console.error("parsePdfCustomData: Error decoding PDFString as UTF-8. Original error:", e);
+                logDebug("parsePdfCustomData: Failed to decode PDFString as UTF-8. Data might be corrupted or not valid UTF-8.", { error: e.message, stack: e.stack });
+                jsonData = null; // Ensure jsonData is null if decoding fails
             }
         } else {
             logDebug("parsePdfCustomData: Custom editor data found, but it was not an instance of PDFHexString or PDFString.", { retrievedObjectType: customDataValue.constructor ? customDataValue.constructor.name : typeof customDataValue });
