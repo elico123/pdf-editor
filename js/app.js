@@ -249,10 +249,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const dataToStore = JSON.stringify({ textObjects, redactionAreas });
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
 
-            const customDataValue = PDFString.of(dataToStore);
+            const utf8Bytes = new TextEncoder().encode(dataToStore);
+
+            // Manually convert the Uint8Array to a hexadecimal string
+            const hex = Array.from(utf8Bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+            const customDataValue = PDFHexString.of(hex);
 
             finalDoc.catalog.set(customDataKey, customDataValue);
-            logDebug("performStandardSave: Set custom data (UTF-8 as PDFHexString) in PDF catalog.", { key: customDataKey.toString(), dataLength: dataToStore.length });
+            logDebug("performStandardSave: Set custom data (UTF-8 as PDFHexString) in PDF catalog.", { key: customDataKey.toString(), dataLength: hex.length });
 
             const finalPdfBytes = await finalDoc.save();
             const originalFileName = (dom.fileInput?.files?.[0]?.name || 'document.pdf').replace(/\.pdf$/i, '');
