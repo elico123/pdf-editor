@@ -100,24 +100,24 @@ describe('parsePdfCustomData', () => {
         expect(stringInstance.asString).not.toHaveBeenCalled();
     });
 
-    test('should fallback to asString for PDFString if getBytes fails', () => {
+    test('should return null if getBytes fails for PDFString', () => {
         const text = "Fallback Test";
         const data = { textObjects: [{ text: text }], redactionAreas: [] };
         const jsonData = JSON.stringify(data);
         const utf8Bytes = new TextEncoder().encode(jsonData);
 
-        const latin1DecodedJson = new TextDecoder('latin1').decode(utf8Bytes);
+        // const latin1DecodedJson = new TextDecoder('latin1').decode(utf8Bytes); // No longer needed
 
         const stringInstance = createMockPdfStringInstance(utf8Bytes, true);
-        stringInstance.asString = jest.fn(() => latin1DecodedJson);
+        // stringInstance.asString = jest.fn(() => latin1DecodedJson); // No longer needed
 
         const result = parsePdfCustomData(stringInstance, mockPDFHexStringConstructor, mockPDFStringConstructor);
 
-        const expectedDataAfterFallback = JSON.parse(latin1DecodedJson);
+        // const expectedDataAfterFallback = JSON.parse(latin1DecodedJson); // No longer needed
 
-        expect(result).toEqual(expectedDataAfterFallback);
+        expect(result).toBeNull(); // Expect null now
         expect(stringInstance.getBytes).toHaveBeenCalled();
-        expect(stringInstance.asString).toHaveBeenCalled();
+        expect(stringInstance.asString).not.toHaveBeenCalled(); // Verify asString is NOT called
     });
 
     test('should return null for unknown data types', () => {
