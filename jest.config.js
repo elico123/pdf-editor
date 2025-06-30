@@ -20,7 +20,7 @@ const config = {
   coverageProvider: 'v8', // or 'babel' if you use Babel for transforms
 
   // An array of file extensions your modules use
-  moduleFileExtensions: ['js', 'mjs', 'json', 'jsx', 'ts', 'tsx', 'node'],
+  moduleFileExtensions: ['js', 'mjs', 'json', 'jsx', 'node'],
 
   // The root directory that Jest should scan for tests and modules within
   rootDir: '.',
@@ -33,22 +33,13 @@ const config = {
 
   // The glob patterns Jest uses to detect test files.
   testMatch: [
-    '**/tests/**/*.(spec|test).[jt]s?(x)', // Matches .js, .jsx, .ts, .tsx in tests/
-    '**/tests/**/?(*.)+(spec|test).[jt]s?(x)', // Matches files like utils.test.js/ts in tests/
-    '**/?(*.)+(spec|test).[jt]s?(x)' // Matches .js, .jsx, .ts, .tsx files anywhere
+    '**/tests/**/*.(spec|test).js?(x)',
+    '**/tests/**/?(*.)+(spec|test).js?(x)',
+    '**/?(*.)+(spec|test).js?(x)'
   ],
 
   // The test environment that will be used for testing
   testEnvironment: 'jest-environment-jsdom',
-
-  // Preset for TypeScript
-  preset: 'ts-jest',
-
-  // Module name mapper to resolve .js extensions to .ts files for ts-jest
-  // when moduleResolution is node16/nodenext
-  moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1',
-  },
 
   // Jest's default resolver does not support export maps.
   // If you encounter issues with imports from packages that use export maps (like uuid),
@@ -56,15 +47,7 @@ const config = {
   // For Node's ESM support, you might need to run jest with --experimental-vm-modules
   // "scripts": { "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js" } in package.json
 
-  // ts-jest will handle .ts and .tsx files.
-  // The preset 'ts-jest' includes the necessary transform.
-  // If you have other specific transform needs (e.g., for .mjs files if any remain), add them here.
-  transform: {
-    // Example: If you had .mjs files processed by babel-jest
-    // '^.+\\.mjs$': 'babel-jest',
-  },
-  // extensionsToTreatAsEsm is important for ts-jest with ESM
-  extensionsToTreatAsEsm: ['.ts', '.mts'], // Treat .ts and .mts as ESM
+  transform: {},
 };
 
 export default config;

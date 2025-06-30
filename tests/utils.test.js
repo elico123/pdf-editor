@@ -1,18 +1,17 @@
-// tests/utils.test.mjs
+// tests/utils.test.js
 import { describe, test, expect, beforeEach, afterEach, jest, beforeAll } from '@jest/globals';
-// NO static imports from ../js/utils.mjs here
+// NO static imports from ../js/utils.js here
 
-// Define types for mock objects
-interface MockHTMLElement {
-    classList: {
-        add: jest.Mock;
-        remove: jest.Mock;
-    };
-    style: Partial<CSSStyleDeclaration>; // Using Partial as we might not mock all style properties
-    textContent?: string | null;
-}
 
-const mockedLoaderOverlay: MockHTMLElement = {
+/**
+ * @typedef {object} MockHTMLElement
+ * @property {{ add: jest.Mock, remove: jest.Mock }} classList
+ * @property {Partial<CSSStyleDeclaration>} style
+ * @property {string | null | undefined} textContent
+ */
+
+/** @type {MockHTMLElement} */
+const mockedLoaderOverlay = {
     classList: {
         add: jest.fn(),
         remove: jest.fn(),
@@ -20,8 +19,9 @@ const mockedLoaderOverlay: MockHTMLElement = {
     style: {},
 };
 
-const mockedLoaderText: MockHTMLElement = {
-    classList: { // Add to satisfy MockHTMLElement, even if not directly used by mockedLoaderText
+/** @type {MockHTMLElement} */
+const mockedLoaderText = {
+    classList: {
         add: jest.fn(),
         remove: jest.fn(),
     },
@@ -29,34 +29,25 @@ const mockedLoaderText: MockHTMLElement = {
     textContent: '',
 };
 
-// Mock the domElements module
-// The factory function now returns our predefined mock objects.
-// Note: The actual domElements.ts exports HTMLElement | null, but our mocks are simplified.
-// This discrepancy is fine for testing the logic of utils.ts as long as the properties utils.ts uses are present.
-// jest.mock('../js/domElements.js', () => ({ // Or .ts - let's try .js first
-//     loaderOverlay: mockedLoaderOverlay,
-//     loaderText: mockedLoaderText,
-// }));
-// ^^^ No longer needed due to dependency injection in utils.ts functions
+// Mock the domElements module - Not needed due to dependency injection
 
-// Define a type for the dynamically imported module
-// This should reflect the actual exports from js/utils.ts
-interface UtilsModule {
-    hexToRgb: (hex: string | null | undefined) => ({ r: number; g: number; b: number } | null);
-    hasRtl: (s: string) => boolean;
-    // Updated signatures for showLoader and hideLoader
-    showLoader: (text: string, loaderTextParam?: HTMLElement | null, loaderOverlayParam?: HTMLElement | null) => void;
-    hideLoader: (loaderOverlayParam?: HTMLElement | null) => void;
-    downloadBlob: (data: Uint8Array, fileName: string) => void;
-}
+/**
+ * @typedef {object} UtilsModule
+ * @property {(hex: string | null | undefined) => ({ r: number; g: number; b: number } | null)} hexToRgb
+ * @property {(s: string) => boolean} hasRtl
+ * @property {(text: string, loaderTextParam?: HTMLElement | null, loaderOverlayParam?: HTMLElement | null) => void} showLoader
+ * @property {(loaderOverlayParam?: HTMLElement | null) => void} hideLoader
+ * @property {(data: Uint8Array, fileName: string) => void} downloadBlob
+ */
 
 
 describe('Utility Functions', () => {
     describe('hexToRgb', () => {
-        let hexToRgb: UtilsModule['hexToRgb'];
+        /** @type {UtilsModule['hexToRgb']} */
+        let hexToRgb;
 
         beforeAll(async () => {
-            const utils = await import('../js/utils.ts') as unknown as UtilsModule;
+            const utils = await import('../js/utils.js');
             hexToRgb = utils.hexToRgb;
         });
 
@@ -73,9 +64,9 @@ describe('Utility Functions', () => {
         });
 
         test('should return null for invalid hex color strings', () => {
-            expect(hexToRgb('#F00F')).toBeNull(); // Invalid length
-            expect(hexToRgb('12345')).toBeNull();  // Invalid length
-            expect(hexToRgb('#GGHHII')).toBeNull(); // Invalid characters
+            expect(hexToRgb('#F00F')).toBeNull();
+            expect(hexToRgb('12345')).toBeNull();
+            expect(hexToRgb('#GGHHII')).toBeNull();
             expect(hexToRgb('NotAHex')).toBeNull();
             expect(hexToRgb('')).toBeNull();
             expect(hexToRgb(null)).toBeNull();
@@ -88,10 +79,11 @@ describe('Utility Functions', () => {
     });
 
     describe('hasRtl', () => {
-        let hasRtl: UtilsModule['hasRtl'];
+        /** @type {UtilsModule['hasRtl']} */
+        let hasRtl;
 
         beforeAll(async () => {
-            const utils = await import('../js/utils.ts') as unknown as UtilsModule;
+            const utils = await import('../js/utils.js');
             hasRtl = utils.hasRtl;
         });
 
@@ -122,41 +114,44 @@ describe('Utility Functions', () => {
     });
 
     describe('DOM-interacting Utilities', () => {
-        let showLoader: UtilsModule['showLoader'];
-        let hideLoader: UtilsModule['hideLoader'];
-        let downloadBlob: UtilsModule['downloadBlob'];
+        /** @type {UtilsModule['showLoader']} */
+        let showLoader;
+        /** @type {UtilsModule['hideLoader']} */
+        let hideLoader;
+        /** @type {UtilsModule['downloadBlob']} */
+        let downloadBlob;
 
-        interface MockAnchorElement {
-            href: string;
-            download: string;
-            style: Partial<CSSStyleDeclaration>;
-            click: jest.Mock;
-            // appendChild and removeChild are not part of anchor, but of document.body
-        }
+        /**
+         * @typedef {object} MockAnchorElement
+         * @property {string} href
+         * @property {string} download
+         * @property {Partial<CSSStyleDeclaration>} style
+         * @property {jest.Mock} click
+         */
 
-        interface MockDocumentBody {
-            appendChild: jest.Mock;
-            removeChild: jest.Mock;
-        }
+        /**
+         * @typedef {object} MockDocumentBody
+         * @property {jest.Mock} appendChild
+         * @property {jest.Mock} removeChild
+         */
 
-        let mockAnchorElement: MockAnchorElement;
-        let mockDocumentBody: MockDocumentBody;
+        /** @type {MockAnchorElement} */
+        let mockAnchorElement;
+        /** @type {MockDocumentBody} */
+        let mockDocumentBody;
 
         beforeAll(async () => {
-            // Dynamically import the DOM-interacting functions
-            const utils = await import('../js/utils.ts') as unknown as UtilsModule;
+            const utils = await import('../js/utils.js');
             showLoader = utils.showLoader;
             hideLoader = utils.hideLoader;
             downloadBlob = utils.downloadBlob;
         });
 
         beforeEach(() => {
-            // Reset our predefined mock objects before each test
             mockedLoaderOverlay.classList.add.mockClear();
             mockedLoaderOverlay.classList.remove.mockClear();
             mockedLoaderText.textContent = '';
 
-            // Mock for downloadBlob
             mockAnchorElement = {
                 href: '',
                 download: '',
@@ -168,10 +163,10 @@ describe('Utility Functions', () => {
                 removeChild: jest.fn(),
             };
 
-            (global.URL.createObjectURL as jest.Mock) = jest.fn(() => 'blob:http://localhost/mock-url');
+            global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost/mock-url');
             global.URL.revokeObjectURL = jest.fn();
 
-            jest.spyOn(document, 'createElement').mockReturnValue(mockAnchorElement as unknown as HTMLAnchorElement);
+            jest.spyOn(document, 'createElement').mockReturnValue(/** @type {HTMLAnchorElement} */ (mockAnchorElement));
             Object.defineProperty(document, 'body', { value: mockDocumentBody, configurable: true, writable: true });
         });
 
@@ -181,9 +176,7 @@ describe('Utility Functions', () => {
 
         describe('showLoader', () => {
             test('should make loader visible and set text', () => {
-                // Pass mocks directly. Cast to `any` or `unknown as HTMLElement | null` as MockHTMLElement is not a true HTMLElement.
-                showLoader('Loading...', mockedLoaderText as any, mockedLoaderOverlay as any);
-                // Assertions are made on our predefined mock objects
+                showLoader('Loading...', /** @type {HTMLElement} */ (mockedLoaderText), /** @type {HTMLElement} */ (mockedLoaderOverlay));
                 expect(mockedLoaderOverlay.classList.remove).toHaveBeenCalledWith('hidden');
                 expect(mockedLoaderText.textContent).toBe('Loading...');
             });
@@ -191,8 +184,7 @@ describe('Utility Functions', () => {
 
         describe('hideLoader', () => {
             test('should hide loader', () => {
-                // Pass mock directly
-                hideLoader(mockedLoaderOverlay as any);
+                hideLoader(/** @type {HTMLElement} */ (mockedLoaderOverlay));
                 expect(mockedLoaderOverlay.classList.add).toHaveBeenCalledWith('hidden');
             });
         });

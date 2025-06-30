@@ -1,38 +1,49 @@
-// js/utils.ts
-import { loaderOverlay as defaultModuleLoaderOverlay, loaderText as defaultModuleLoaderText } from './domElements.ts';
+// js/utils.js
+import { loaderOverlay as defaultModuleLoaderOverlay, loaderText as defaultModuleLoaderText } from './domElements.js';
 
-// Define an interface for the RGB color object
-interface RgbColor {
-    r: number;
-    g: number;
-    b: number;
-}
+/**
+ * @typedef {object} RgbColor
+ * @property {number} r
+ * @property {number} g
+ * @property {number} b
+ */
 
-export const hasRtl = (s: string): boolean => {
+/**
+ * @param {string} s
+ * @returns {boolean}
+ */
+export const hasRtl = (s) => {
     const rtlChars = '\u0590-\u05FF\u0600-\u06FF'; // Hebrew and Arabic character ranges
     const rtlRegex = new RegExp(`[${rtlChars}]`);
     return rtlRegex.test(s);
 };
 
+/**
+ * @param {string} text
+ * @param {HTMLElement | null} [loaderTextParam=defaultModuleLoaderText]
+ * @param {HTMLElement | null} [loaderOverlayParam=defaultModuleLoaderOverlay]
+ * @returns {void}
+ */
 export const showLoader = (
-    text: string,
-    // Use the aliased imports for default values
-    loaderTextParam: HTMLElement | null = defaultModuleLoaderText,
-    loaderOverlayParam: HTMLElement | null = defaultModuleLoaderOverlay
-): void => {
+    text,
+    loaderTextParam = defaultModuleLoaderText,
+    loaderOverlayParam = defaultModuleLoaderOverlay
+) => {
     if (loaderTextParam && loaderOverlayParam) {
         loaderTextParam.textContent = text;
         loaderOverlayParam.classList.remove('hidden');
     } else {
-        // Fallback or error if elements not found, though they should be
         console.error("Loader elements not found for showLoader. Ensure they are correctly passed or available in default DOM elements.");
     }
 };
 
+/**
+ * @param {HTMLElement | null} [loaderOverlayParam=defaultModuleLoaderOverlay]
+ * @returns {void}
+ */
 export const hideLoader = (
-    // Use the aliased import for default value
-    loaderOverlayParam: HTMLElement | null = defaultModuleLoaderOverlay
-): void => {
+    loaderOverlayParam = defaultModuleLoaderOverlay
+) => {
     if (loaderOverlayParam) {
         loaderOverlayParam.classList.add('hidden');
     } else {
@@ -40,10 +51,15 @@ export const hideLoader = (
     }
 };
 
-export const downloadBlob = (data: Uint8Array, fileName: string): void => {
+/**
+ * @param {Uint8Array} data
+ * @param {string} fileName
+ * @returns {void}
+ */
+export const downloadBlob = (data, fileName) => {
     const blob = new Blob([data], { type: 'application/pdf' });
-    const url: string = window.URL.createObjectURL(blob);
-    const a: HTMLAnchorElement = document.createElement('a');
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.style.display = 'none';
     a.href = url;
     a.download = fileName;
@@ -53,11 +69,15 @@ export const downloadBlob = (data: Uint8Array, fileName: string): void => {
     document.body.removeChild(a);
 };
 
-export const hexToRgb = (hex: string | null | undefined): RgbColor | null => {
+/**
+ * @param {string | null | undefined} hex
+ * @returns {RgbColor | null}
+ */
+export const hexToRgb = (hex) => {
     if (!hex) return null;
     // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
     const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-    const fullHex = hex.replace(shorthandRegex, (_m: string, r: string, g: string, b: string): string => {
+    const fullHex = hex.replace(shorthandRegex, (_m, r, g, b) => {
         return r + r + g + g + b + b;
     });
 

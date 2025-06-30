@@ -1,16 +1,7 @@
-// js/pdfSetup.ts
+// js/pdfSetup.js
 
 // It's better to import types from 'pdf-lib' if you install it as a dependency.
-// For now, assuming global PDFLib and pdfjsLib and using 'any' for simplicity.
-// Ideally: import { PDFDocument as PDFLibDocument, rgb as pdfLibRgb, StandardFonts as PdfLibStandardFonts, ... } from 'pdf-lib';
-
-declare global {
-    interface Window {
-        pdfjsLib?: any; // Replace 'any' with actual pdfjsLib types if available
-        PDFLib?: any;   // Replace 'any' with actual PDFLib types if available
-        showSaveFilePicker?: (options?: any) => Promise<any>; // File System Access API
-    }
-}
+// For now, assuming global PDFLib and pdfjsLib.
 
 // Setup for PDF.js worker
 if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
@@ -20,15 +11,22 @@ if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
 }
 
 // Destructure and export PDFLib objects
-// Using 'any' for these types. For stronger typing, import types from 'pdf-lib'
-let PDFDocument: any,
-    rgb: any,
-    StandardFonts: any,
-    TextAlignment: any,
-    PDFName: any,
-    PDFString: any,
-    PDFHexString: any,
-    grayscale: any;
+/** @type {any} */
+let PDFDocument,
+    /** @type {any} */
+    rgb,
+    /** @type {any} */
+    StandardFonts,
+    /** @type {any} */
+    TextAlignment,
+    /** @type {any} */
+    PDFName,
+    /** @type {any} */
+    PDFString,
+    /** @type {any} */
+    PDFHexString,
+    /** @type {any} */
+    grayscale;
 
 if (window.PDFLib) {
     ({ PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale } = window.PDFLib);
@@ -48,3 +46,8 @@ export {
     PDFHexString,
     grayscale,
 };
+
+// For window.showSaveFilePicker, it's typically checked for existence before use:
+// if (window.showSaveFilePicker) { /* ... */ }
+// JSDoc for window properties can be done in a central d.ts or by casting window to any
+// For the purpose of this conversion, direct usage with existence checks is standard for JS.

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const entryPoint = path.resolve(__dirname, '../js/app.ts');
+const entryPoint = path.resolve(__dirname, '../js/app.js');
 const outfile = path.resolve(__dirname, '../dist/app.js');
 
 console.log('Entry point:', entryPoint);
