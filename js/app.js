@@ -249,7 +249,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const dataToStore = JSON.stringify({ textObjects, redactionAreas });
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
 
+            // --- Start of new code ---
+            let relevantTextSample = "No Hebrew text found or textObjects empty.";
+            if (textObjects && textObjects.length > 0) {
+                const hebrewTextObject = textObjects.find(obj => obj && obj.text && (utils.hasRtl ? utils.hasRtl(obj.text) : /[^\x00-\x7F]/.test(obj.text)));
+                if (hebrewTextObject) {
+                    relevantTextSample = hebrewTextObject.text.substring(0, 50) + (hebrewTextObject.text.length > 50 ? "..." : "");
+                } else {
+                    relevantTextSample = "No specific Hebrew text found, showing first text object sample: " + (textObjects[0].text ? textObjects[0].text.substring(0,50) + (textObjects[0].text.length > 50 ? "..." : "") : "empty text");
+                }
+            } else {
+                relevantTextSample = "textObjects array is empty.";
+            }
+            console.log("Saving (sample Hebrew text):", relevantTextSample);
+            console.log("Saving (full data to be encoded):", dataToStore);
+            // --- End of new code ---
+
             const utf8Bytes = new TextEncoder().encode(dataToStore);
+
+            // --- Start of new code ---
+            console.log("Encoded (UTF-8 bytes):", utf8Bytes);
+            // --- End of new code ---
 
             // Manually convert the Uint8Array to a hexadecimal string
             const hex = Array.from(utf8Bytes).map(b => b.toString(16).padStart(2, '0')).join('');

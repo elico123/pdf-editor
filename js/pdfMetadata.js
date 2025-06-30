@@ -82,6 +82,25 @@ export function parsePdfCustomData(
         if (jsonData) {
             const savedData = JSON.parse(jsonData);
             logDebug("parsePdfCustomData: Parsed editor data from JSON string:", savedData);
+
+            // --- Start of new code ---
+            let relevantTextSample = "No Hebrew text found or savedData.textObjects empty.";
+            if (savedData && savedData.textObjects && savedData.textObjects.length > 0) {
+                const hebrewTextObject = savedData.textObjects.find(obj => obj && obj.text && /[^\x00-\x7F]/.test(obj.text)); // Simple non-ASCII check
+                if (hebrewTextObject) {
+                    relevantTextSample = hebrewTextObject.text.substring(0, 50) + (hebrewTextObject.text.length > 50 ? "..." : "");
+                } else {
+                    relevantTextSample = "No specific Hebrew text found, showing first text object sample: " + (savedData.textObjects[0].text ? savedData.textObjects[0].text.substring(0,50) + (savedData.textObjects[0].text.length > 50 ? "..." : "") : "empty text");
+                }
+            } else if (savedData && savedData.textObjects) { // textObjects is present but empty
+                 relevantTextSample = "savedData.textObjects array is empty.";
+            } else { // textObjects property might be missing
+                 relevantTextSample = "savedData.textObjects is undefined or null.";
+            }
+            console.log("Loaded (sample Hebrew text):", relevantTextSample);
+            console.log("Loaded (full parsed data):", savedData);
+            // --- End of new code ---
+
             // Basic validation of expected structure
             if (typeof savedData === 'object' && savedData !== null && Array.isArray(savedData.textObjects) && Array.isArray(savedData.redactionAreas)) {
                 return {
