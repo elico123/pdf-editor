@@ -306,6 +306,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
             const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
 
+            // BEGIN: Added code for Hebrew font loading
+            let hebrewFont = null;
+            try {
+                const fontUrl = '/Open Sans Hebrew Regular.ttf'; // Changed path
+                logDebug(`performFlattenedSave: Fetching Hebrew font from ${fontUrl}`);
+                const fontBytes = await fetch(fontUrl).then(res => {
+                    if (!res.ok) {
+                        throw new Error(`Failed to fetch font: ${res.status} ${res.statusText}`);
+                    }
+                    return res.arrayBuffer();
+                });
+                hebrewFont = await finalDoc.embedFont(fontBytes);
+                logDebug("performFlattenedSave: Hebrew font embedded successfully.");
+            } catch (fontError) {
+                console.error("Error loading Hebrew font:", fontError);
+                logDebug("performFlattenedSave: Error loading Hebrew font", { error: fontError.message, stack: fontError.stack });
+                // Optional: Fallback to helvetica or re-throw, for now, it will just use helvetica if hebrewFont is null
+            }
+            // END: Added code for Hebrew font loading
+
+            // BEGIN: Added containsHebrew helper function
+            const containsHebrew = (text) => {
+                if (!text) return false;
+                // Basic check for Hebrew Unicode block (U+0590 to U+05FF)
+                return /[֐-׿]/.test(text);
+            };
+            // END: Added containsHebrew helper function
+
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
             if (finalDoc.catalog.has(customDataKey)) {
                 finalDoc.catalog.delete(customDataKey);
@@ -338,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 page.drawText(textObj.text, {
                     x: x,
                     y: pageHeight - y - fontSize,
-                    font: helveticaFont,
+                    font: containsHebrew(textObj.text) && hebrewFont ? hebrewFont : helveticaFont,
                     size: fontSize,
                     color: rgb(color.r / 255, color.g / 255, color.b / 255),
                     maxWidth: width,
