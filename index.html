@@ -213,15 +213,6 @@
         <div id="debug-messages" class="whitespace-pre-wrap break-all"></div>
     </div>
     
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                // Use a relative path for service worker registration
-                navigator.serviceWorker.register('service-worker.js').catch(err => console.log('SW reg failed: ', err));
-            });
-        }
-    </script>
-    
     <script type="module" src="./dist/app.js"></script> <!-- Updated path for compiled TS -->
 </body>
 </html>
