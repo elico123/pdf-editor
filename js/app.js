@@ -1,9 +1,6 @@
 // js/app.js
 // js/app.js
 import { EDITOR_METADATA_KEY } from './config.js';
-
-// --- State variable for fontkit registration ---
-let fontkitRegistered = false;
 import * as dom from './domElements.js';
 import * as utils from './utils.js';
 import { logDebug, initDebugSystem } from './debug.js';
@@ -11,6 +8,9 @@ import * as pdfLibCore from './pdfSetup.js';
 import { parsePdfCustomData } from './pdfMetadata.js'; // Import the new function
 
 // Removed TypeScript type placeholders
+
+// --- State variable for fontkit registration ---
+let fontkitRegistered = false;
 
 
 document.addEventListener('DOMContentLoaded', () => {
