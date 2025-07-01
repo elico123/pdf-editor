@@ -9,6 +9,11 @@ import { parsePdfCustomData } from './pdfMetadata.js'; // Import the new functio
 
 // Removed TypeScript type placeholders
 
+// Add this registration code
+if (window.PDFLib && window.fontkit) {
+  window.PDFLib.PDFDocument.registerFontkit(window.fontkit);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize the debug system with necessary DOM elements
     initDebugSystem({
