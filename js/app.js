@@ -1043,6 +1043,138 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dom.toolAddTextBtn) dom.toolAddTextBtn.addEventListener('click', () => activateTool('add-text', 'Tap on a page to add a new text box.'));
     if (dom.toolRedactBtn) dom.toolRedactBtn.addEventListener('click', () => activateTool('redact', 'Tap and drag on a page to create a redaction area. Tap existing areas to manage them.'));
 
+    // --- PRINT FUNCTIONALITY ---
+    const handlePrintPdf = async () => {
+        logDebug("handlePrintPdf: Initiated.");
+        if (!pdfBytes) {
+            alert("No PDF loaded to print.");
+            logDebug("handlePrintPdf: Aborted - No PDF loaded.");
+            return;
+        }
+
+        utils.showLoader('Preparing PDF for printing...');
+
+        try {
+            const printDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+            const helveticaFont = await printDoc.embedFont(StandardFonts.Helvetica);
+            let hebrewFont = null;
+            try {
+                const fontUrl = '/Open Sans Hebrew Regular.ttf';
+                logDebug(`handlePrintPdf: Fetching Hebrew font from ${fontUrl}`);
+                const fontBytesResponse = await fetch(fontUrl);
+                if (!fontBytesResponse.ok) {
+                    throw new Error(`Failed to fetch font: ${fontBytesResponse.status} ${fontBytesResponse.statusText}`);
+                }
+                const hebrewFontBytes = await fontBytesResponse.arrayBuffer();
+                hebrewFont = await printDoc.embedFont(hebrewFontBytes);
+                logDebug("handlePrintPdf: Hebrew font embedded successfully.");
+            } catch (fontError) {
+                console.error("Error loading Hebrew font for printing:", fontError);
+                logDebug("handlePrintPdf: Error loading Hebrew font", { error: fontError.message, stack: fontError.stack });
+                // Continue without Hebrew font, will fallback to Helvetica
+            }
+
+            const containsHebrew = (text) => {
+                if (!text) return false;
+                return /[֐-׿]/.test(text); // Basic check for Hebrew Unicode block
+            };
+
+            logDebug("handlePrintPdf: Applying textObjects. Count: " + textObjects.length);
+            for (const textObj of textObjects) {
+                const pageIndex = pageOrder.indexOf(textObj.originalPageNum);
+                if (pageIndex === -1) {
+                    logDebug(`Skipping textObj for print, pageIndex not found for originalPageNum: ${textObj.originalPageNum}`);
+                    continue;
+                }
+                const page = printDoc.getPage(pageIndex);
+                const { height: pageHeight } = page.getSize();
+                const color = utils.hexToRgb(textObj.color);
+
+                if (!color || typeof textObj.x !== 'number' || typeof textObj.y !== 'number' || typeof textObj.fontSize !== 'number' || typeof textObj.width !== 'number') {
+                    console.error("Invalid text object property for printing, skipping:", textObj);
+                    logDebug("handlePrintPdf: Invalid text object property, skipping.", textObj);
+                    continue;
+                }
+
+                page.drawText(textObj.text, {
+                    x: textObj.x,
+                    y: pageHeight - textObj.y - textObj.fontSize, // PDF origin is bottom-left
+                    font: containsHebrew(textObj.text) && hebrewFont ? hebrewFont : helveticaFont,
+                    size: textObj.fontSize,
+                    color: rgb(color.r / 255, color.g / 255, color.b / 255),
+                    maxWidth: textObj.width,
+                    textAlign: textObj.direction === 'rtl' ? TextAlignment.Right : TextAlignment.Left,
+                });
+            }
+
+            logDebug("handlePrintPdf: Applying redactionAreas. Count: " + redactionAreas.length);
+            for (const area of redactionAreas) {
+                const pageIndex = pageOrder.indexOf(area.originalPageNum);
+                if (pageIndex === -1) {
+                    logDebug(`Skipping redactionArea for print, pageIndex not found for originalPageNum: ${area.originalPageNum}`);
+                    continue;
+                }
+                const page = printDoc.getPage(pageIndex);
+                const { height: pageHeight } = page.getSize();
+
+                if (typeof area.x !== 'number' || typeof area.y !== 'number' || typeof area.width !== 'number' || typeof area.height !== 'number') {
+                    console.error("Invalid redaction area property for printing, skipping:", area);
+                    logDebug("handlePrintPdf: Invalid redaction area property, skipping.", area);
+                    continue;
+                }
+
+                page.drawRectangle({
+                    x: area.x,
+                    y: pageHeight - area.y - area.height, // PDF origin is bottom-left
+                    width: area.width,
+                    height: area.height,
+                    color: rgb(0, 0, 0), // Black for redaction
+                });
+            }
+
+            const printPdfBytes = await printDoc.save();
+            const blob = new Blob([printPdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = url;
+            document.body.appendChild(iframe);
+
+            iframe.onload = () => {
+                try {
+                    logDebug("handlePrintPdf: iframe loaded, attempting to print.");
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (printError) {
+                    console.error('Error during iframe print:', printError);
+                    logDebug("handlePrintPdf: Error during iframe print operation", { error: printError.message, stack: printError.stack });
+                    alert('Could not open print dialog. Please try saving and printing manually.');
+                } finally {
+                    // Cleanup after a delay to allow print dialog to process
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                        URL.revokeObjectURL(url);
+                        logDebug('handlePrintPdf: Print iframe removed and URL revoked.');
+                    }, 100); // Increased delay slightly just in case
+                }
+            };
+            logDebug("handlePrintPdf: iframe created and onload handler set.");
+
+        } catch (error) {
+            console.error("Error preparing PDF for print:", error);
+            logDebug("handlePrintPdf: Error preparing PDF", { error: error.message, stack: error.stack });
+            alert('An error occurred while preparing the PDF for printing. Please try again.');
+        } finally {
+            utils.hideLoader();
+            logDebug("handlePrintPdf: Process finished, loader hidden.");
+        }
+    };
+
+    if (dom.printPdfBtn) {
+        dom.printPdfBtn.addEventListener('click', handlePrintPdf);
+    }
+
     // Initialize Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
