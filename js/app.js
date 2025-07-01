@@ -9,16 +9,6 @@ import { parsePdfCustomData } from './pdfMetadata.js'; // Import the new functio
 
 // Removed TypeScript type placeholders
 
-// Add this registration code
-if (window.PDFLib && window.fontkit) {
-  try {
-    window.PDFLib.PDFDocument.registerFontkit(window.fontkit);
-    console.log("Successfully registered fontkit with PDFLib.");
-  } catch (error) {
-    console.error("Error registering fontkit with PDFLib:", error);
-    // Optionally, you could inform the user here, or disable functionality that depends on this.
-  }
-}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize the debug system with necessary DOM elements
