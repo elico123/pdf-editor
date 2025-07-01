@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm ci # Use ci for cleaner installs in CI
 
+      - name: Get short commit SHA
+        run: echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
       - name: Build project
         run: npm run build # This runs `tsc`
 
