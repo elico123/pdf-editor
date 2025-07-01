@@ -67,13 +67,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (window.PDFLib && window.fontkit) {
             try {
-                // Use the imported PDFDocument object to be safe
-                PDFDocument.registerFontkit(window.fontkit);
-                logDebug("Successfully registered fontkit with PDFLib.");
-                fontkitRegistered = true;
+                // Explicitly use window.PDFLib.PDFDocument and check if registerFontkit exists
+                if (window.PDFLib.PDFDocument && typeof window.PDFLib.PDFDocument.registerFontkit === 'function') {
+                    window.PDFLib.PDFDocument.registerFontkit(window.fontkit);
+                    logDebug("Successfully registered fontkit with PDFLib using window.PDFLib.PDFDocument.");
+                    fontkitRegistered = true;
+                } else {
+                    const debugInfo = {
+                        hasPDFLib: !!window.PDFLib,
+                        hasFontkit: !!window.fontkit,
+                        hasPDFDocument: !!(window.PDFLib && window.PDFLib.PDFDocument),
+                        hasRegisterFontkitMethod: !!(window.PDFLib && window.PDFLib.PDFDocument && typeof window.PDFLib.PDFDocument.registerFontkit === 'function'),
+                        pdfDocumentKeys: (window.PDFLib && window.PDFLib.PDFDocument) ? Object.keys(window.PDFLib.PDFDocument) : "N/A"
+                    };
+                    console.error("window.PDFLib.PDFDocument.registerFontkit is not a function or PDFDocument is missing.", debugInfo);
+                    logDebug("registerFontkitOnce: window.PDFLib.PDFDocument.registerFontkit is not available as expected.", debugInfo);
+                    // Throw an error to indicate failure, which will be caught below
+                    throw new Error("Custom: PDFDocument.registerFontkit is not available on window.PDFLib.PDFDocument.");
+                }
             } catch (error) {
                 console.error("Error registering fontkit with PDFLib:", error);
-                logDebug("Error registering fontkit with PDFLib:", { error: error.message, stack: error.stack });
+                logDebug("Error registering fontkit with PDFLib (original or custom):", { error: error.message, stack: error.stack });
+                // Potentially re-throw or set a flag indicating failure if other parts of the app need to know
             }
         } else {
             console.error("PDFLib or fontkit not available for registration.");
