@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // BEGIN: Added code for Hebrew font loading
             let hebrewFont = null;
             try {
-                const fontUrl = '/Open Sans Hebrew Regular.ttf'; // Changed path
+                const fontUrl = 'fonts/OpenSansHebrew-Regular.ttf';
                 logDebug(`performFlattenedSave: Fetching Hebrew font from ${fontUrl}`);
                 const fontBytes = await fetch(fontUrl).then(res => {
                     if (!res.ok) {
@@ -1059,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const helveticaFont = await printDoc.embedFont(StandardFonts.Helvetica);
             let hebrewFont = null;
             try {
-                const fontUrl = '/Open Sans Hebrew Regular.ttf';
+                const fontUrl = 'fonts/OpenSansHebrew-Regular.ttf';
                 logDebug(`handlePrintPdf: Fetching Hebrew font from ${fontUrl}`);
                 const fontBytesResponse = await fetch(fontUrl);
                 if (!fontBytesResponse.ok) {
@@ -1136,30 +1136,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const blob = new Blob([printPdfBytes], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
 
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = url;
-            document.body.appendChild(iframe);
-
-            iframe.onload = () => {
-                try {
-                    logDebug("handlePrintPdf: iframe loaded, attempting to print.");
-                    iframe.contentWindow.focus();
-                    iframe.contentWindow.print();
-                } catch (printError) {
-                    console.error('Error during iframe print:', printError);
-                    logDebug("handlePrintPdf: Error during iframe print operation", { error: printError.message, stack: printError.stack });
-                    alert('Could not open print dialog. Please try saving and printing manually.');
-                } finally {
-                    // Cleanup after a delay to allow print dialog to process
-                    setTimeout(() => {
-                        document.body.removeChild(iframe);
-                        URL.revokeObjectURL(url);
-                        logDebug('handlePrintPdf: Print iframe removed and URL revoked.');
-                    }, 100); // Increased delay slightly just in case
-                }
-            };
-            logDebug("handlePrintPdf: iframe created and onload handler set.");
+            // Open the PDF in a new tab. This is more reliable than the iframe method.
+            window.open(url);
+            // Clean up the object URL after a short delay to allow the new tab to open.
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            logDebug('handlePrintPdf: PDF opened in new tab for printing.');
 
         } catch (error) {
             console.error("Error preparing PDF for print:", error);
@@ -1175,14 +1156,6 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.printPdfBtn.addEventListener('click', handlePrintPdf);
     }
 
-    // Initialize Service Worker
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/service-worker.js')
-                .then(reg => console.log('SW registered.', reg))
-                .catch(err => console.log('SW reg failed: ', err));
-        });
-    }
     logDebug("Application initialized and event listeners attached.");
 });
 
