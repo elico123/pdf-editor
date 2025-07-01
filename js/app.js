@@ -9,6 +9,9 @@ import { parsePdfCustomData } from './pdfMetadata.js'; // Import the new functio
 
 // Removed TypeScript type placeholders
 
+// --- State variable for fontkit registration ---
+let fontkitRegistered = false;
+
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize the debug system with necessary DOM elements
@@ -55,6 +58,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Re-alias pdfLibCore objects for convenience if needed, or use pdfLibCore.PDFDocument etc.
     const { PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale } = pdfLibCore;
+
+    // --- Helper function for fontkit registration ---
+    function registerFontkitOnce() {
+        if (fontkitRegistered) {
+            logDebug("registerFontkitOnce: Already registered.");
+            return;
+        }
+        if (window.PDFLib && window.fontkit) {
+            try {
+                // Use the imported PDFDocument object to be safe
+                PDFDocument.registerFontkit(window.fontkit);
+                logDebug("Successfully registered fontkit with PDFLib.");
+                fontkitRegistered = true;
+            } catch (error) {
+                console.error("Error registering fontkit with PDFLib:", error);
+                logDebug("Error registering fontkit with PDFLib:", { error: error.message, stack: error.stack });
+            }
+        } else {
+            console.error("PDFLib or fontkit not available for registration.");
+            logDebug("PDFLib or fontkit not available for registration.");
+        }
+    }
 
     // --- State Variables ---
     let pdfDoc = null;
@@ -268,6 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /** @returns {Promise<void>} */
     const performStandardSave = async () => {
+        registerFontkitOnce(); // Ensure fontkit is registered
         utils.showLoader('Saving Editable PDF...');
         logDebug("performStandardSave: Starting editable save.");
         try {
@@ -347,6 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /** @returns {Promise<void>} */
     const performFlattenedSave = async () => {
+        registerFontkitOnce(); // Ensure fontkit is registered
         utils.showLoader('Saving Flattened PDF...');
         logDebug("performFlattenedSave: Starting flattened save.");
         try {
@@ -1046,6 +1073,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- PRINT FUNCTIONALITY ---
     const handlePrintPdf = async () => {
+        registerFontkitOnce(); // Ensure fontkit is registered
         logDebug("handlePrintPdf: Initiated.");
         if (!pdfBytes) {
             alert("No PDF loaded to print.");
