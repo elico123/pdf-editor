@@ -46,12 +46,22 @@ describe('parsePdfCustomData', () => {
     });
 
     /**
-     * @param {Uint8Array} bytes
+     * @param {string} hexString The hex string (e.g., "0123456789abcdef")
      * @returns {object}
      */
-    const createMockPdfHexStringInstance = (bytes) => {
+    const createMockPdfHexStringInstance = (hexString) => {
         const instance = new mockPDFHexStringConstructor();
-        instance.decode = jest.fn(() => bytes);
+        // Store the raw hex string, and simulate the <...> format if not present.
+        const formattedHexString = hexString.startsWith('<') ? hexString : `<${hexString}>`;
+        instance.toString = jest.fn(() => formattedHexString);
+        // The decode method is no longer directly called by parsePdfCustomData,
+        // but if other parts of the code (outside the SUT) were to use it,
+        // we can still mock its expected behavior based on the hex.
+        instance.decode = jest.fn(() => {
+            const cleanHex = formattedHexString.replace(/[<>]/g, '');
+            const bytes = new Uint8Array(cleanHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+            return bytes;
+        });
         return instance;
     };
 
@@ -80,11 +90,14 @@ describe('parsePdfCustomData', () => {
         const data = { textObjects: [{ text: hebrewText }], redactionAreas: [] };
         const jsonData = JSON.stringify(data);
         const utf8Bytes = new TextEncoder().encode(jsonData);
-        const hexStringInstance = createMockPdfHexStringInstance(utf8Bytes);
+        // Convert bytes to a hex string for the mock
+        const hexString = Array.from(utf8Bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        const hexStringInstance = createMockPdfHexStringInstance(hexString);
 
         const result = parsePdfCustomData(hexStringInstance, mockPDFHexStringConstructor, mockPDFStringConstructor);
         expect(result).toEqual(data);
-        expect(hexStringInstance.decode).toHaveBeenCalled();
+        expect(hexStringInstance.toString).toHaveBeenCalled();
+        // expect(hexStringInstance.decode).not.toHaveBeenCalled(); // decode is no longer called by parsePdfCustomData
     });
 
     test('should correctly parse data from PDFString using getBytes', () => {
@@ -129,7 +142,9 @@ describe('parsePdfCustomData', () => {
 
     test('should return null if JSON parsing fails', () => {
         const invalidJsonBytes = new TextEncoder().encode("this is not json");
-        const hexStringInstance = createMockPdfHexStringInstance(invalidJsonBytes);
+        // Convert bytes to a hex string for the mock
+        const hexString = Array.from(invalidJsonBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        const hexStringInstance = createMockPdfHexStringInstance(hexString);
 
         expect(parsePdfCustomData(hexStringInstance, mockPDFHexStringConstructor, mockPDFStringConstructor)).toBeNull();
     });
@@ -138,7 +153,9 @@ describe('parsePdfCustomData', () => {
         const incompleteData = { textObjects: [{ text: "test" }] }; // Missing redactionAreas
         const jsonData = JSON.stringify(incompleteData);
         const utf8Bytes = new TextEncoder().encode(jsonData);
-        const hexStringInstance = createMockPdfHexStringInstance(utf8Bytes);
+        // Convert bytes to a hex string for the mock
+        const hexString = Array.from(utf8Bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        const hexStringInstance = createMockPdfHexStringInstance(hexString);
 
         const result = parsePdfCustomData(hexStringInstance, mockPDFHexStringConstructor, mockPDFStringConstructor);
         expect(result).toBeNull();

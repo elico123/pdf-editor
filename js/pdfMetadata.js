@@ -54,9 +54,17 @@ export function parsePdfCustomData(
     try {
         if (customDataValue instanceof PDFHexString) {
             logDebug("parsePdfCustomData: Found custom editor data as PDFHexString in catalog.");
-            const bytes = customDataValue.decode(); // Should return Uint8Array
+
+            // --- START OF FIX ---
+            // The .decode() method is unreliable. Instead, get the raw hex string
+            // and manually convert it back to bytes. This is a more robust approach.
+            const hex = customDataValue.toString().replace(/[<>]/g, '');
+            const bytes = new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+            // --- END OF FIX ---
+
             jsonData = new TextDecoder('utf-8').decode(bytes);
-            logDebug("parsePdfCustomData: Decoded PDFHexString data using UTF-8 via decode().", { dataLength: jsonData.length });
+            logDebug("parsePdfCustomData: Decoded PDFHexString data using UTF-8.", { dataLength: jsonData.length });
+
         } else if (customDataValue instanceof PDFString) {
             logDebug("parsePdfCustomData: Found custom editor data as PDFString in catalog.");
             try {
