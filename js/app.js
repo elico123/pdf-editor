@@ -65,34 +65,34 @@ document.addEventListener('DOMContentLoaded', () => {
             logDebug("registerFontkitOnce: Already registered.");
             return;
         }
-        if (window.PDFLib && window.fontkit) {
+        // The check should be against PDFDocument from the module scope, not the window
+        if (PDFDocument && window.fontkit) {
             try {
-                // Explicitly use window.PDFLib.PDFDocument and check if registerFontkit exists
-                if (window.PDFLib.PDFDocument && typeof window.PDFLib.PDFDocument.registerFontkit === 'function') {
-                    window.PDFLib.PDFDocument.registerFontkit(window.fontkit);
-                    logDebug("Successfully registered fontkit with PDFLib using window.PDFLib.PDFDocument.");
+                // Check the local PDFDocument object
+                if (typeof PDFDocument.registerFontkit === 'function') {
+                    PDFDocument.registerFontkit(window.fontkit);
+                    logDebug("Successfully registered fontkit with PDFLib.");
                     fontkitRegistered = true;
                 } else {
                     const debugInfo = {
-                        hasPDFLib: !!window.PDFLib,
+                        hasPDFLib: !!window.PDFLib, // Keep this for context if needed
                         hasFontkit: !!window.fontkit,
-                        hasPDFDocument: !!(window.PDFLib && window.PDFLib.PDFDocument),
-                        hasRegisterFontkitMethod: !!(window.PDFLib && window.PDFLib.PDFDocument && typeof window.PDFLib.PDFDocument.registerFontkit === 'function'),
-                        pdfDocumentKeys: (window.PDFLib && window.PDFLib.PDFDocument) ? Object.keys(window.PDFLib.PDFDocument) : "N/A"
+                        // Check our module-scoped PDFDocument
+                        hasPDFDocument: !!PDFDocument,
+                        hasRegisterFontkitMethod: (PDFDocument && typeof PDFDocument.registerFontkit === 'function'),
+                        pdfDocumentKeys: PDFDocument ? Object.keys(PDFDocument) : "N/A"
                     };
-                    console.error("window.PDFLib.PDFDocument.registerFontkit is not a function or PDFDocument is missing.", debugInfo);
-                    logDebug("registerFontkitOnce: window.PDFLib.PDFDocument.registerFontkit is not available as expected.", debugInfo);
-                    // Throw an error to indicate failure, which will be caught below
-                    throw new Error("Custom: PDFDocument.registerFontkit is not available on window.PDFLib.PDFDocument.");
+                    console.error("PDFDocument.registerFontkit is not a function.", debugInfo);
+                    logDebug("registerFontkitOnce: PDFDocument.registerFontkit is not available as expected.", debugInfo);
+                    throw new Error("Custom: PDFDocument.registerFontkit is not available.");
                 }
             } catch (error) {
                 console.error("Error registering fontkit with PDFLib:", error);
                 logDebug("Error registering fontkit with PDFLib (original or custom):", { error: error.message, stack: error.stack });
-                // Potentially re-throw or set a flag indicating failure if other parts of the app need to know
             }
         } else {
-            console.error("PDFLib or fontkit not available for registration.");
-            logDebug("PDFLib or fontkit not available for registration.");
+            console.error("PDFLib's PDFDocument or fontkit not available for registration.");
+            logDebug("PDFLib's PDFDocument or fontkit not available for registration.");
         }
     }
 
