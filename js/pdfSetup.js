@@ -1,43 +1,32 @@
 // js/pdfSetup.js
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.js';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry.js';
 
-// It's better to import types from 'pdf-lib' if you install it as a dependency.
-// For now, assuming global PDFLib and pdfjsLib.
+import {
+    PDFDocument as PDFLibDocument, // Renamed to avoid conflict with pdf.js's PDFDocument type if it were used
+    rgb,
+    StandardFonts,
+    TextAlignment,
+    PDFName,
+    PDFString,
+    PDFHexString,
+    grayscale
+} from 'pdf-lib';
 
 // Setup for PDF.js worker
-if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
+if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
+    // The worker is copied to the 'dist' folder by the build script
+    pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.js';
 } else {
-    console.error("pdfjsLib or GlobalWorkerOptions is not defined. Ensure PDF.js library is loaded.");
+    console.error("pdfjsLib or GlobalWorkerOptions is not defined. This should not happen with direct imports.");
 }
 
-// Destructure and export PDFLib objects
-/** @type {any} */
-let PDFDocument,
-    /** @type {any} */
-    rgb,
-    /** @type {any} */
-    StandardFonts,
-    /** @type {any} */
-    TextAlignment,
-    /** @type {any} */
-    PDFName,
-    /** @type {any} */
-    PDFString,
-    /** @type {any} */
-    PDFHexString,
-    /** @type {any} */
-    grayscale;
+// Export the pdfjsLib itself to be used by app.js
+export { pdfjsLib };
 
-if (window.PDFLib) {
-    ({ PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale } = window.PDFLib);
-} else {
-    console.error("PDFLib is not defined. Ensure pdf-lib library is loaded. PDF editing features may fail.");
-    // Provide dummy objects or throw error to prevent further execution if critical
-    // For now, they will remain undefined if PDFLib is not loaded.
-}
-
+// Export PDFLib objects (already imported and destructured)
 export {
-    PDFDocument, // Consider renaming to avoid conflict if PDFDocument type is also imported from 'pdf-lib'
+    PDFLibDocument as PDFDocument, // Export with the original intended name for use in app.js
     rgb,
     StandardFonts,
     TextAlignment,

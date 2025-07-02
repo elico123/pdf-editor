@@ -5,7 +5,10 @@ import * as dom from './domElements.js';
 import * as utils from './utils.js';
 import { logDebug, initDebugSystem } from './debug.js';
 import * as pdfLibCore from './pdfSetup.js';
+import { pdfjsLib } from './pdfSetup.js'; // Import pdfjsLib
 import { parsePdfCustomData } from './pdfMetadata.js'; // Import the new function
+import Sortable from 'sortablejs';
+import fontkit from '@pdf-lib/fontkit';
 
 // Removed TypeScript type placeholders
 
@@ -65,19 +68,15 @@ document.addEventListener('DOMContentLoaded', () => {
             logDebug("registerFontkitOnce: Already registered.");
             return;
         }
-        // The check should be against PDFDocument from the module scope, not the window
-        if (PDFDocument && window.fontkit) {
+        if (PDFDocument && fontkit) {
             try {
-                // Check the local PDFDocument object
                 if (typeof PDFDocument.registerFontkit === 'function') {
-                    PDFDocument.registerFontkit(window.fontkit);
+                    PDFDocument.registerFontkit(fontkit);
                     logDebug("Successfully registered fontkit with PDFLib.");
                     fontkitRegistered = true;
                 } else {
                     const debugInfo = {
-                        hasPDFLib: !!window.PDFLib, // Keep this for context if needed
-                        hasFontkit: !!window.fontkit,
-                        // Check our module-scoped PDFDocument
+                        hasFontkit: !!fontkit,
                         hasPDFDocument: !!PDFDocument,
                         hasRegisterFontkitMethod: (PDFDocument && typeof PDFDocument.registerFontkit === 'function'),
                         pdfDocumentKeys: PDFDocument ? Object.keys(PDFDocument) : "N/A"
@@ -91,8 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 logDebug("Error registering fontkit with PDFLib (original or custom):", { error: error.message, stack: error.stack });
             }
         } else {
-            console.error("PDFLib's PDFDocument or fontkit not available for registration.");
-            logDebug("PDFLib's PDFDocument or fontkit not available for registration.");
+            console.error("PDFLib's PDFDocument or fontkit (from import) not available for registration.");
+            logDebug("PDFLib's PDFDocument or fontkit (from import) not available for registration.");
         }
     }
 
@@ -187,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
          utils.showLoader('Rendering PDF...');
          pdfBytes = bytes;
          const pdfDocInstance = await PDFDocument.load(bytes, { ignoreEncryption: true }); // pdf-lib instance
-         pdfDoc = await window.pdfjsLib.getDocument({ data: bytes }).promise; // pdf.js instance
+         pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise; // pdf.js instance
 
          textObjects = [];
          redactionAreas = [];
@@ -223,6 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
          updateActionButtonsState(true);
          utils.hideLoader();
     };
+
+    let sortableThumbnails = null; // Keep a reference to Sortable instance
 
     /** @returns {Promise<void>} */
     const renderAllPages = async () => {
@@ -277,7 +278,26 @@ document.addEventListener('DOMContentLoaded', () => {
             thumbItem.append(canvas, pageNumberLabel);
             dom.thumbnailsContainer.appendChild(thumbItem);
         }
-        logDebug("renderThumbnails: Completed.");
+
+        if (sortableThumbnails) {
+            sortableThumbnails.destroy();
+        }
+        if (dom.thumbnailsContainer) {
+            sortableThumbnails = new Sortable(dom.thumbnailsContainer, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: async (evt) => {
+                    if (evt.oldIndex === undefined || evt.newIndex === undefined) return;
+                    const movedItem = pageOrder.splice(evt.oldIndex, 1)[0];
+                    pageOrder.splice(evt.newIndex, 0, movedItem);
+                    logDebug("Thumbnails reordered", { oldIndex: evt.oldIndex, newIndex: evt.newIndex, newOrder: pageOrder });
+                    // Re-render pages in new order and update thumbnail labels
+                    await renderAllPages();
+                    await renderThumbnails(); // To update numbers
+                }
+            });
+        }
+        logDebug("renderThumbnails: Completed and Sortable initialized/re-initialized.");
     };
 
     if (dom.openPdfBtn) dom.openPdfBtn.addEventListener('click', () => dom.fileInput?.click());
