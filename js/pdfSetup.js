@@ -1,6 +1,5 @@
 // js/pdfSetup.js
-import * as pdfjsLib from 'pdfjs-dist/build/pdf.js';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry.js';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 
 import {
     PDFDocument as PDFLibDocument, // Renamed to avoid conflict with pdf.js's PDFDocument type if it were used
@@ -16,7 +15,7 @@ import {
 // Setup for PDF.js worker
 if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
     // The worker is copied to the 'dist' folder by the build script
-    pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.mjs';
 } else {
     console.error("pdfjsLib or GlobalWorkerOptions is not defined. This should not happen with direct imports.");
 }
