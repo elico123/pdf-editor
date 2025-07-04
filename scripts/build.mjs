@@ -16,8 +16,8 @@ const versionFile = path.join(distDir, 'version.json');
 const packageJsonPath = path.resolve(projectRoot, 'package.json');
 // const tailwindInputCss = path.resolve(projectRoot, 'css/tailwind.css'); // Removed
 // const tailwindOutputCss = path.join(distDir, 'tailwind.css'); // Removed
-const pdfWorkerSource = path.resolve(projectRoot, 'node_modules/pdfjs-dist/build/pdf.worker.js');
-const pdfWorkerDest = path.join(distDir, 'pdf.worker.js');
+const pdfWorkerSource = path.resolve(projectRoot, 'node_modules/pdfjs-dist/build/pdf.worker.mjs');
+const pdfWorkerDest = path.join(distDir, 'pdf.worker.mjs');
 
 
 console.log('Entry point:', entryPoint);
