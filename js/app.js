@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
          utils.showLoader('Rendering PDF...');
          pdfBytes = bytes;
          const pdfDocInstance = await PDFDocument.load(bytes, { ignoreEncryption: true }); // pdf-lib instance
-         pdfDoc = await pdfjsLib.getDocument({ data: bytes }).promise; // pdf.js instance
+         pdfDoc = await pdfjsLib.getDocument({ data: bytes.slice().buffer }).promise; // pdf.js instance
 
          textObjects = [];
          redactionAreas = [];
