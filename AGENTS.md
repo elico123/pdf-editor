@@ -14,3 +14,4 @@ This project is a web-based PDF editor application.
 *   When adding new features, ensure they are responsive and work well across different screen sizes, prioritizing mobile usability.
 *   If any changes could potentially impact user privacy or data handling, they must be carefully reviewed to ensure they align with the privacy-focused nature of this application.
 *   When adding comments, don't forget those go to production. Keep only necessary comments for long-term.
+*   **Test-Driven Development (TDD):** All new features and bug fixes must be developed following a TDD approach. This means that for any given change, a failing test must be written before the implementation is created.
