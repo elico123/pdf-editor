@@ -4,9 +4,8 @@ import { EDITOR_METADATA_KEY } from './config.js';
 import * as dom from './domElements.js';
 import * as utils from './utils.js';
 import { logDebug, initDebugSystem } from './debug.js';
-import * as pdfLibCore from './pdfSetup.js';
-import { pdfjsLib } from './pdfSetup.js'; // Import pdfjsLib
-import { parsePdfCustomData } from './pdfMetadata.js'; // Import the new function
+import { pdfjsLib, PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale } from './pdfSetup.js';
+import { parsePdfCustomData } from './pdfMetadata.js';
 import Sortable from 'sortablejs';
 import fontkit from '@pdf-lib/fontkit';
 
@@ -58,9 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load and display the version
     loadAndDisplayVersion();
-
-    // Re-alias pdfLibCore objects for convenience if needed, or use pdfLibCore.PDFDocument etc.
-    const { PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale } = pdfLibCore;
 
     // --- Helper function for fontkit registration ---
     function registerFontkitOnce() {
