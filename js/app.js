@@ -1092,7 +1092,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- PRINT FUNCTIONALITY ---
     const handlePrintPdf = async () => {
-        registerFontkitOnce(); // Ensure fontkit is registered
         logDebug("handlePrintPdf: Initiated.");
         if (!pdfBytes) {
             alert("No PDF loaded to print.");
@@ -1104,6 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const printDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+            registerFontkitOnce(printDoc); // Ensure fontkit is registered
             const helveticaFont = await printDoc.embedFont(StandardFonts.Helvetica);
             let hebrewFont = null;
             try {
