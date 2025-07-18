@@ -59,35 +59,23 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAndDisplayVersion();
 
     // --- Helper function for fontkit registration ---
-    function registerFontkitOnce() {
+    function registerFontkitOnce(doc) {
         if (fontkitRegistered) {
             logDebug("registerFontkitOnce: Already registered.");
             return;
         }
-        if (PDFDocument && fontkit) {
+        if (doc && typeof doc.registerFontkit === 'function' && fontkit) {
             try {
-                if (typeof PDFDocument.registerFontkit === 'function') {
-                    PDFDocument.registerFontkit(fontkit);
-                    logDebug("Successfully registered fontkit with PDFLib.");
-                    fontkitRegistered = true;
-                } else {
-                    const debugInfo = {
-                        hasFontkit: !!fontkit,
-                        hasPDFDocument: !!PDFDocument,
-                        hasRegisterFontkitMethod: (PDFDocument && typeof PDFDocument.registerFontkit === 'function'),
-                        pdfDocumentKeys: PDFDocument ? Object.keys(PDFDocument) : "N/A"
-                    };
-                    console.error("PDFDocument.registerFontkit is not a function.", debugInfo);
-                    logDebug("registerFontkitOnce: PDFDocument.registerFontkit is not available as expected.", debugInfo);
-                    throw new Error("Custom: PDFDocument.registerFontkit is not available.");
-                }
+                doc.registerFontkit(fontkit);
+                logDebug("Successfully registered fontkit with PDFLib.");
+                fontkitRegistered = true;
             } catch (error) {
                 console.error("Error registering fontkit with PDFLib:", error);
                 logDebug("Error registering fontkit with PDFLib (original or custom):", { error: error.message, stack: error.stack });
             }
         } else {
-            console.error("PDFLib's PDFDocument or fontkit (from import) not available for registration.");
-            logDebug("PDFLib's PDFDocument or fontkit (from import) not available for registration.");
+            console.error("PDFDocument instance with registerFontkit or fontkit not available.");
+            logDebug("PDFDocument instance with registerFontkit or fontkit not available for registration.");
         }
     }
 
@@ -324,7 +312,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /** @returns {Promise<void>} */
     const performStandardSave = async () => {
-        registerFontkitOnce(); // Ensure fontkit is registered
         utils.showLoader('Saving Editable PDF...');
         logDebug("performStandardSave: Starting editable save.");
         try {
@@ -333,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+            registerFontkitOnce(finalDoc); // Ensure fontkit is registered
 
             const dataToStore = JSON.stringify({ textObjects, redactionAreas });
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
@@ -404,7 +392,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /** @returns {Promise<void>} */
     const performFlattenedSave = async () => {
-        registerFontkitOnce(); // Ensure fontkit is registered
         utils.showLoader('Saving Flattened PDF...');
         logDebug("performFlattenedSave: Starting flattened save.");
         try {
@@ -413,6 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+            registerFontkitOnce(finalDoc); // Ensure fontkit is registered
             const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
 
             // BEGIN: Added code for Hebrew font loading
