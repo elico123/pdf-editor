@@ -1,6 +1,16 @@
 // js/pdfSetup.js
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
-import * as pdfLib from 'pdf-lib';
+// CHANGE: Use direct named imports from pdf-lib
+import {
+    PDFDocument,
+    rgb,
+    StandardFonts,
+    TextAlignment,
+    PDFName,
+    PDFString,
+    PDFHexString,
+    grayscale,
+} from 'pdf-lib';
 
 // Setup for PDF.js worker
 if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
@@ -13,8 +23,8 @@ if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
 // Export the pdfjsLib itself to be used by app.js
 export { pdfjsLib };
 
-// Export PDFLib objects from the imported module
-export const {
+// CHANGE: Directly export the named imports
+export {
     PDFDocument,
     rgb,
     StandardFonts,
@@ -23,4 +33,4 @@ export const {
     PDFString,
     PDFHexString,
     grayscale,
-} = pdfLib;
+};

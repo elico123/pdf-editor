@@ -4,8 +4,7 @@ import { EDITOR_METADATA_KEY } from './config.js';
 import * as dom from './domElements.js';
 import * as utils from './utils.js';
 import { logDebug, initDebugSystem } from './debug.js';
-import * as pdfLibCore from './pdfSetup.js';
-import { pdfjsLib } from './pdfSetup.js'; // Import pdfjsLib
+import { pdfjsLib, PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale } from './pdfSetup.js';
 import { parsePdfCustomData } from './pdfMetadata.js'; // Import the new function
 import Sortable from 'sortablejs';
 import fontkit from '@pdf-lib/fontkit';
@@ -59,32 +58,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load and display the version
     loadAndDisplayVersion();
 
-    // Re-alias pdfLibCore objects for convenience if needed, or use pdfLibCore.PDFDocument etc.
-    const { PDFDocument, rgb, StandardFonts, TextAlignment, PDFName, PDFString, PDFHexString, grayscale } = pdfLibCore;
-
     // --- Helper function for fontkit registration ---
-    function registerFontkitOnce() {
+    function registerFontkitOnce(doc) {
         if (fontkitRegistered) {
             logDebug("registerFontkitOnce: Already registered.");
             return;
         }
-        if (PDFDocument && fontkit) {
+        if (doc && fontkit) {
             try {
-                if (typeof PDFDocument.registerFontkit === 'function') {
-                    PDFDocument.registerFontkit(fontkit);
-                    logDebug("Successfully registered fontkit with PDFLib.");
-                    fontkitRegistered = true;
-                } else {
-                    const debugInfo = {
-                        hasFontkit: !!fontkit,
-                        hasPDFDocument: !!PDFDocument,
-                        hasRegisterFontkitMethod: (PDFDocument && typeof PDFDocument.registerFontkit === 'function'),
-                        pdfDocumentKeys: PDFDocument ? Object.keys(PDFDocument) : "N/A"
-                    };
-                    console.error("PDFDocument.registerFontkit is not a function.", debugInfo);
-                    logDebug("registerFontkitOnce: PDFDocument.registerFontkit is not available as expected.", debugInfo);
-                    throw new Error("Custom: PDFDocument.registerFontkit is not available.");
-                }
+                doc.registerFontkit(fontkit);
+                logDebug("Successfully registered fontkit with PDFLib.");
+                fontkitRegistered = true;
             } catch (error) {
                 console.error("Error registering fontkit with PDFLib:", error);
                 logDebug("Error registering fontkit with PDFLib (original or custom):", { error: error.message, stack: error.stack });
@@ -328,7 +312,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /** @returns {Promise<void>} */
     const performStandardSave = async () => {
-        registerFontkitOnce(); // Ensure fontkit is registered
         utils.showLoader('Saving Editable PDF...');
         logDebug("performStandardSave: Starting editable save.");
         try {
@@ -337,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+            registerFontkitOnce(finalDoc); // Ensure fontkit is registered
 
             const dataToStore = JSON.stringify({ textObjects, redactionAreas });
             const customDataKey = PDFName.of(EDITOR_METADATA_KEY);
@@ -408,7 +392,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /** @returns {Promise<void>} */
     const performFlattenedSave = async () => {
-        registerFontkitOnce(); // Ensure fontkit is registered
         utils.showLoader('Saving Flattened PDF...');
         logDebug("performFlattenedSave: Starting flattened save.");
         try {
@@ -417,6 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const finalDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+            registerFontkitOnce(finalDoc);
             const helveticaFont = await finalDoc.embedFont(StandardFonts.Helvetica);
 
             // BEGIN: Added code for Hebrew font loading
@@ -1108,7 +1092,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- PRINT FUNCTIONALITY ---
     const handlePrintPdf = async () => {
-        registerFontkitOnce(); // Ensure fontkit is registered
         logDebug("handlePrintPdf: Initiated.");
         if (!pdfBytes) {
             alert("No PDF loaded to print.");
@@ -1120,6 +1103,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const printDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+            registerFontkitOnce(printDoc);
             const helveticaFont = await printDoc.embedFont(StandardFonts.Helvetica);
             let hebrewFont = null;
             try {
