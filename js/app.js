@@ -492,12 +492,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     continue;
                 }
                 logDebug(`performFlattenedSave: Drawing redaction on page ${pageIndex}`, {x,y,width,height});
+                const color = utils.hexToRgb(area.color || '#FFFFFF');
                 page.drawRectangle({
                     x: x,
                     y: pageHeight - y - height,
                     width: width,
                     height: height,
-                    color: rgb(0, 0, 0),
+                    color: rgb(color.r / 255, color.g / 255, color.b / 255),
                 });
             }
 
@@ -556,6 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
             box.style.top = `${area.y * scale}px`;
             box.style.width = `${area.width * scale}px`;
             box.style.height = `${area.height * scale}px`;
+            box.style.setProperty('--redaction-color', area.color || '#FFFFFF');
             pageDiv.appendChild(box);
         }
     };
@@ -681,6 +683,11 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedRedactionBox = boxElement;
             selectedRedactionBox.classList.add('selected');
             if (dom.redactionToolbar) dom.redactionToolbar.classList.add('visible');
+            const redactionIndex = parseInt(boxElement.dataset.redactionIndex, 10);
+            const redactionArea = redactionAreas[redactionIndex];
+            if (redactionArea && dom.toolbarColorBtn) {
+                dom.toolbarColorBtn.value = redactionArea.color;
+            }
         } else {
             selectedRedactionBox = null;
             if (dom.redactionToolbar) dom.redactionToolbar.classList.remove('visible');
@@ -804,6 +811,19 @@ document.addEventListener('DOMContentLoaded', () => {
             redactionAreas.splice(index, 1);
             selectRedactionBox(null);
             await renderRedactionBoxes();
+        });
+    }
+
+    if (dom.toolbarColorBtn) {
+        dom.toolbarColorBtn.addEventListener('input', (e) => {
+            if (!selectedRedactionBox || !selectedRedactionBox.dataset || !selectedRedactionBox.dataset.redactionIndex) return;
+            const target = /** @type {HTMLInputElement} */ (e.target);
+            const index = parseInt(selectedRedactionBox.dataset.redactionIndex, 10);
+            const newColor = target.value;
+            if (redactionAreas[index]) {
+                redactionAreas[index].color = newColor;
+                selectedRedactionBox.style.setProperty('--redaction-color', newColor);
+            }
         });
     }
 
@@ -1030,7 +1050,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     x: Math.min(x1, x2),
                     y: Math.min(y1, y2),
                     width: Math.abs(x1 - x2),
-                    height: Math.abs(y1 - y2)
+                    height: Math.abs(y1 - y2),
+                    color: '#FFFFFF'
                 });
                 logDebug("handleInteractionEnd: New redactionArea pushed", { newArea: redactionAreas[redactionAreas.length-1] });
                 await renderRedactionBoxes();
@@ -1171,12 +1192,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     continue;
                 }
 
+                const color = utils.hexToRgb(area.color || '#FFFFFF');
                 page.drawRectangle({
                     x: area.x,
                     y: pageHeight - area.y - area.height, // PDF origin is bottom-left
                     width: area.width,
                     height: area.height,
-                    color: rgb(0, 0, 0), // Black for redaction
+                    color: rgb(color.r / 255, color.g / 255, color.b / 255),
                 });
             }
 
@@ -1214,6 +1236,7 @@ document.addEventListener('DOMContentLoaded', () => {
  * @property {number} y
  * @property {number} width
  * @property {number} height
+ * @property {string} color
  */
 
 /**
