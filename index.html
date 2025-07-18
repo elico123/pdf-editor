@@ -29,7 +29,7 @@
             cursor: move;
             z-index: 10;
         }
-        .redaction-box { background-color: rgba(255, 255, 255, 0.8); }
+        .redaction-box { background-color: var(--redaction-color, rgba(255, 255, 255, 0.8)); }
         .text-box { background-color: rgba(59, 130, 246, 0.1); }
 
         .redaction-box.selected, .text-box.selected {
@@ -170,6 +170,8 @@
             <button id="toolbar-resize-btn" class="p-2 rounded-md hover:bg-gray-700" title="Resize">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 1v4m0 0h-4m4 0l-5-5" /></svg>
             </button>
+            <label for="toolbar-color-btn" class="text-sm">Color:</label>
+            <input type="color" id="toolbar-color-btn" class="bg-gray-700 rounded-md" value="#FFFFFF">
             <button id="toolbar-delete-btn" class="p-2 rounded-md hover:bg-gray-700" title="Delete">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </button>

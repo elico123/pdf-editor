@@ -47,6 +47,8 @@ export const redactionToolbar = document.getElementById('redaction-toolbar');
 export const toolbarResizeBtn = document.getElementById('toolbar-resize-btn');
 /** @type {HTMLButtonElement | null} */
 export const toolbarDeleteBtn = document.getElementById('toolbar-delete-btn');
+/** @type {HTMLInputElement | null} */
+export const toolbarColorBtn = document.getElementById('toolbar-color-btn');
 
 // Text Toolbar
 /** @type {HTMLElement | null} */
